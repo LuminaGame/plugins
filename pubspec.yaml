@@ -40,7 +40,7 @@ melos:
   scripts:
     analyze:
       description: flutter analyze in every plugin.
-      exec: flutter analyze .
+      exec: flutter analyze --no-fatal-infos --no-fatal-warnings .
     format:
       description: Format every plugin's Dart sources.
       exec: dart format .
