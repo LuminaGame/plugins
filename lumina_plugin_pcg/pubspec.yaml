@@ -1,0 +1,35 @@
+name: lumina_plugin_pcg
+description: "Procedural Content Generation for Lumina Studio: PCG Graph assets and PCG Volume actors that scatter static meshes over a landscape or a volume floor. The reference example of the lumina_editor_api plugin API."
+version: 0.1.0
+publish_to: none
+repository: https://github.com/LuminaGame/plugins
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=1.17.0"
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  lumina_editor_api:
+    git:
+      url: https://github.com/LuminaGame/lumina.git
+      path: lumina_editor_api
+  lumina:
+    git:
+      url: https://github.com/LuminaGame/lumina.git
+      path: lumina
+  # Pinned to the exact version Lumina Studio resolves: a plugin shares the
+  # host's single shadcn_flutter copy.
+  shadcn_flutter: 0.0.54
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  test: ^1.24.0
+  # Reads back the zips tool/pack_plugin.dart writes.
+  archive: ^4.2.0
+
+flutter:

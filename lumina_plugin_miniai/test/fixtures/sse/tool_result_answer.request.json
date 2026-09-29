@@ -1,0 +1,52 @@
+{
+  "model": "MiniCPM5-2B-Q4_K_M",
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "temperature": 0,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are MiniAI inside the Lumina game editor. Use the tools to answer."
+    },
+    {
+      "role": "user",
+      "content": "How many actors are in the level? Use the tool."
+    },
+    {
+      "role": "assistant",
+      "content": "",
+      "tool_calls": [
+        {
+          "id": "call_1",
+          "type": "function",
+          "function": {
+            "name": "probe.count",
+            "arguments": "{}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "name": "probe.count",
+      "content": "{\"count\": 5}"
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "probe.count",
+        "description": "Counts the actors in the open level.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+name: lumina_plugins_workspace
+description: "Lumina plugins: MIT-licensed Lumina Studio plugins (PCG, MiniAI) built on the lumina_editor_api plugin API."
+publish_to: none
+
+environment:
+  sdk: ^3.12.0
+
+# Dart pub workspace: one resolution and one pubspec.lock for every plugin.
+workspace:
+  - lumina_plugin_pcg
+  - lumina_plugin_miniai
+
+dev_dependencies:
+  melos: ^7.8.0
+
+# Native-assets hook settings for the engine packages the plugins depend on
+# (flutter_filament from the lumina repo, flutter_assimp / flutter_riglogic
+# from the tools repo), read from this (the workspace root) pubspec; paths are
+# relative to this file. They assume the sibling-checkout layout
+# (<dir>/lumina, <dir>/tools, <dir>/plugins) and this repo's gitignored
+# `filament/` link (a junction/symlink to the shared Filament checkout):
+#   filament_dir      Filament checkout with its prebuilt out/cmake-release*
+#   libcxx_dir        Linux only: flutter_filament's bundled libc++
+#   riglogic_lib_dir  OpenRigLogic static library built by the tools repo's
+#                     flutter_riglogic/tool/build_openriglogic.{sh,bat}
+# `LUMINA_FILAMENT_DIR` / `LUMINA_LIBCXX_DIR` / `LUMINA_RIGLOGIC_LIB_DIR`
+# override them when a hook runs directly.
+hooks:
+  user_defines:
+    flutter_filament:
+      filament_dir: filament
+    flutter_assimp:
+      filament_dir: filament
+      libcxx_dir: ../lumina/flutter_filament/third_party/libcxx
+    flutter_riglogic:
+      libcxx_dir: ../lumina/flutter_filament/third_party/libcxx
+      riglogic_lib_dir: ../tools/flutter_riglogic/third_party/openriglogic/lib
+
+melos:
+  scripts:
+    analyze:
+      description: flutter analyze in every plugin.
+      exec: flutter analyze .
+    format:
+      description: Format every plugin's Dart sources.
+      exec: dart format .
+    format:check:
+      description: Fail when a plugin's Dart sources are not formatted.
+      exec: dart format --output=none --set-exit-if-changed .
+    test:
+      description: flutter test in every plugin that has tests, one plugin at a time.
+      run: flutter test --concurrency=1
+      exec:
+        concurrency: 1
+      packageFilters:
+        dirExists: test
+    pack:
+      description: Pack every plugin for the Lumina Marketplace (tool/pack_plugin.dart -> <plugin>/build/pack/<name>-<version>.zip).
+      run: dart tool/pack_plugin.dart
+      exec:
+        concurrency: 1
+      packageFilters:
+        fileExists: tool/pack_plugin.dart

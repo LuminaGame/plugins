@@ -1,0 +1,78 @@
+// The approval table and the toolset selector.
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lumina_editor_api/lumina_editor_api.dart';
+import 'package:lumina_plugin_miniai/lumina_plugin_miniai.dart';
+
+McpTool _tool(String name, McpToolRisk risk, Set<String> groups) => McpTool(
+      name: name,
+      description: 'The $name tool. ' * 20,
+      inputSchema: McpSchema.object({'asset': McpSchema.string('asset path')}, required: ['asset']),
+      handler: (_) => McpToolResult.text('ok'),
+      risk: risk,
+      groups: groups,
+    );
+
+void main() {
+  group('approval gate', () {
+    const a = ApprovalDecision.allow, q = ApprovalDecision.ask, h = ApprovalDecision.hidden;
+    const expected = {
+      ApprovalMode.plan: [a, a, h, h, h],
+      ApprovalMode.ask: [a, a, q, q, q],
+      ApprovalMode.acceptEdits: [a, a, a, q, q],
+      ApprovalMode.auto: [a, a, a, a, a],
+    };
+    for (final mode in ApprovalMode.values) {
+      test('${mode.name} across readOnly, editorState, mutating, destructive, external', () {
+        expect([for (final r in McpToolRisk.values) ApprovalGate.table(r, mode)], expected[mode]);
+      });
+    }
+
+    test('"always allow in this chat" turns ask into allow for that tool only', () {
+      final gate = ApprovalGate();
+      final spawn = _tool('spawn_actor', McpToolRisk.mutating, {McpToolGroups.level});
+      final delete = _tool('delete_actors', McpToolRisk.mutating, {McpToolGroups.level});
+      expect(gate.decide(spawn), ApprovalDecision.ask);
+      gate.alwaysAllow('spawn_actor');
+      expect(gate.decide(spawn), ApprovalDecision.allow);
+      expect(gate.decide(delete), ApprovalDecision.ask);
+      gate.mode = ApprovalMode.plan;
+      expect(gate.decide(spawn), ApprovalDecision.hidden, reason: 'plan mode still hides it');
+    });
+  });
+
+  group('toolset selector', () {
+    const selector = ToolsetSelector(maxTools: 4);
+    final tools = [
+      _tool('list_actors', McpToolRisk.readOnly, {McpToolGroups.level}),
+      _tool('spawn_actor_from_asset', McpToolRisk.mutating, {McpToolGroups.level}),
+      _tool('add_blueprint_node', McpToolRisk.mutating, {McpToolGroups.blueprint}),
+      _tool('list_assets', McpToolRisk.readOnly, {McpToolGroups.asset}),
+      _tool('project_info', McpToolRisk.readOnly, {McpToolGroups.core}),
+      _tool('undo', McpToolRisk.mutating, {McpToolGroups.core}),
+    ];
+
+    test('the groups follow the words; level when nothing matches', () {
+      expect(selector.groupsFor('Place three barrels in the level'), {McpToolGroups.level});
+      expect(selector.groupsFor('Add a node to the Blueprint graph'), {McpToolGroups.blueprint});
+      expect(selector.groupsFor('hello there'), {McpToolGroups.level});
+    });
+
+    test('the request\'s groups first, then core, capped; plan drops the changes', () {
+      final picked = selector.select(tools, 'Place three barrels in the level', ApprovalGate()).map((t) => t.name).toList();
+      expect(picked.first, 'spawn_actor_from_asset', reason: 'shares a word with the request');
+      expect(picked, containsAll(['list_actors', 'project_info']));
+      expect(picked, isNot(contains('add_blueprint_node')));
+      expect(picked.length, lessThanOrEqualTo(4));
+      final plan = selector.select(tools, 'Place three barrels', ApprovalGate(mode: ApprovalMode.plan)).map((t) => t.name);
+      expect(plan, isNot(contains('spawn_actor_from_asset')));
+      expect(plan, isNot(contains('undo')));
+    });
+
+    test('a tool becomes an LlmToolSpec with its schema unchanged and a short description', () {
+      final spec = const ToolsetSelector().specOf(tools[1]);
+      expect(spec.name, 'spawn_actor_from_asset');
+      expect(spec.parameters, tools[1].inputSchema);
+      expect(spec.description.length, lessThanOrEqualTo(160));
+    });
+  });
+}

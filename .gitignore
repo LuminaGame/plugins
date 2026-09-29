@@ -1,0 +1,28 @@
+# Dart / Flutter (each plugin's .gitignore adds its own entries)
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+coverage/
+# Local development overrides of the sibling repos (lumina, tools);
+# pub workspaces read them at the root only.
+pubspec_overrides.yaml
+
+# Local links (junctions on Windows): patched Filament with its prebuilt
+# out/ folders, and the shared 3D test assets (their own repo).
+/filament
+/test-assets
+
+# Plugin packs (tool/pack_plugin.dart)
+**/build/pack/
+*.zip.tmp
+
+# IDEs / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,47 @@
+{
+  "model": "MiniCPM5-2B-Q4_K_M",
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  },
+  "temperature": 0,
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are MiniAI inside the Lumina game editor. Use the tools. Make every call the request needs in one response."
+    },
+    {
+      "role": "user",
+      "content": "Place the asset contents/meshes/fuel_barrel_red.lmas twice: once at [0, 0, 0] and once at [300, 0, 0]."
+    }
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "spawn_actor_from_asset",
+        "description": "Places a mesh asset in the open level as a new actor.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "asset": {
+              "type": "string",
+              "description": "The asset path, e.g. \"contents/meshes/barrel.lmas\""
+            },
+            "location": {
+              "type": "array",
+              "description": "[x, y, z] in centimetres, Z up",
+              "items": {
+                "type": "number"
+              }
+            }
+          },
+          "required": [
+            "asset"
+          ],
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

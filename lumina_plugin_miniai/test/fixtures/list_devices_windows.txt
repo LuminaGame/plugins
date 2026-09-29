@@ -1,0 +1,3 @@
+Available devices:
+  Vulkan0: NVIDIA RTX PRO 2000 Blackwell (16051 MiB, 15283 MiB free)
+  Vulkan1: NVIDIA GeForce RTX 4080 (16048 MiB, 15280 MiB free)

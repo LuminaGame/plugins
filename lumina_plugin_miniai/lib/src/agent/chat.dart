@@ -1,0 +1,299 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:lumina_editor_api/lumina_editor_api.dart';
+
+import '../llm/llm_types.dart';
+import 'approval.dart';
+
+enum ToolCallStatus { waitingApproval, running, done, failed, denied }
+
+/// One thing shown in the conversation.
+sealed class ChatItem {
+  ChatItem();
+}
+
+class UserItem extends ChatItem {
+  UserItem(this.text);
+  final String text;
+}
+
+class AssistantItem extends ChatItem {
+  final StringBuffer text = StringBuffer();
+  final StringBuffer thinking = StringBuffer();
+}
+
+class ToolCallItem extends ChatItem {
+  ToolCallItem({required this.call, required this.risk});
+
+  final LlmToolCall call;
+
+  /// Null when the model named a tool that does not exist.
+  final McpToolRisk? risk;
+  ToolCallStatus status = ToolCallStatus.running;
+  String result = '';
+  Duration? elapsed;
+
+  /// Set while [status] is [ToolCallStatus.waitingApproval].
+  Completer<ApprovalAnswer>? approval;
+}
+
+/// A note from MiniAI itself: stopped, a provider error, the round limit.
+class NoteItem extends ChatItem {
+  NoteItem(this.text, {this.isError = false});
+  final String text;
+  final bool isError;
+}
+
+/// One assistant turn: what "Undo this turn" can take back.
+class TurnRecord {
+  TurnRecord({required this.id, required this.label, required this.userItemIndex, this.sceneStep = false, this.fileWrites = 0, this.undone = false});
+
+  /// `<chatId>:<n>`; the tool caller is `miniai:<id>`.
+  final String id;
+
+  /// The turn's undo step label (`AI: <title>`).
+  final String label;
+
+  /// Where the turn starts in [Chat.items].
+  final int userItemIndex;
+
+  /// The turn left one step on the level undo stack.
+  bool sceneStep;
+
+  /// File-changing tool calls that succeeded (each left snapshots).
+  int fileWrites;
+  bool undone;
+
+  String get caller => 'miniai:$id';
+
+  Map<String, Object?> toJson() => {
+        'id': id,
+        'label': label,
+        'userItem': userItemIndex,
+        if (sceneStep) 'sceneStep': true,
+        if (fileWrites > 0) 'fileWrites': fileWrites,
+        if (undone) 'undone': true,
+      };
+
+  factory TurnRecord.fromJson(Map<String, Object?> j) => TurnRecord(
+        id: '${j['id']}',
+        label: '${j['label']}',
+        userItemIndex: j['userItem'] as int? ?? 0,
+        sceneStep: j['sceneStep'] == true,
+        fileWrites: j['fileWrites'] as int? ?? 0,
+        undone: j['undone'] == true,
+      );
+}
+
+/// The user's answer on an approval card.
+class ApprovalAnswer {
+  const ApprovalAnswer.allow() : allowed = true, always = false, reason = null;
+  const ApprovalAnswer.alwaysAllow() : allowed = true, always = true, reason = null;
+  const ApprovalAnswer.deny([this.reason]) : allowed = false, always = false;
+
+  final bool allowed;
+
+  /// "Always allow in this chat".
+  final bool always;
+  final String? reason;
+}
+
+/// One conversation; it is stored with the project.
+class Chat extends ChangeNotifier {
+  Chat({required this.id, ApprovalMode mode = ApprovalMode.ask, DateTime? createdAt})
+      : gate = ApprovalGate(mode: mode),
+        createdAt = (createdAt ?? DateTime.now()).toUtc(),
+        updatedAt = (createdAt ?? DateTime.now()).toUtc();
+
+  static const String defaultTitle = 'New chat';
+
+  final String id;
+  String title = defaultTitle;
+  final DateTime createdAt;
+  DateTime updatedAt;
+  bool pinned = false;
+
+  /// The provider id and the model of the last turn.
+  String? provider;
+  String? model;
+  final ApprovalGate gate;
+  final List<ChatItem> items = [];
+
+  /// What the model sees (the system prompt first).
+  final List<LlmMessage> history = [];
+
+  /// The assistant turns, oldest first.
+  final List<TurnRecord> turns = [];
+
+  bool running = false;
+  Usage? lastUsage;
+
+  /// The tool calls waiting for the user.
+  List<ToolCallItem> get pendingApprovals =>
+      [for (final i in items) if (i is ToolCallItem && i.status == ToolCallStatus.waitingApproval) i];
+
+  void changed() => notifyListeners();
+
+  /// Answers [item]'s approval card.
+  void answer(ToolCallItem item, ApprovalAnswer answer) {
+    final pending = item.approval;
+    if (pending == null || pending.isCompleted) return;
+    if (answer.always) gate.alwaysAllow(item.call.name);
+    pending.complete(answer);
+  }
+
+  /// Messages the user sent (the History's count).
+  int get messageCount => items.whereType<UserItem>().length;
+
+  // ── storage ──────────────────────────────────
+
+  static const int formatVersion = 1;
+
+  Map<String, Object?> toJson() => {
+        'id': id,
+        'title': title,
+        'version': formatVersion,
+        'createdAt': createdAt.toIso8601String(),
+        'updatedAt': updatedAt.toIso8601String(),
+        'pinned': pinned,
+        'settings': {
+          'provider': provider,
+          'model': model,
+          'mode': gate.mode.name,
+          'alwaysAllowed': gate.alwaysAllowed.toList()..sort(),
+        },
+        if (lastUsage != null) 'usage': {'in': lastUsage!.promptTokens, 'out': lastUsage!.completionTokens},
+        'messages': [for (final m in history) _messageJson(m)],
+        'items': [for (final i in items) _itemJson(i)],
+        if (turns.isNotEmpty) 'turns': [for (final t in turns) t.toJson()],
+      };
+
+  static Object? _args(String json) {
+    try {
+      return jsonDecode(json);
+    } on FormatException {
+      return json;
+    }
+  }
+
+  static String _argsText(Object? args) => args is String ? args : jsonEncode(args ?? const {});
+
+  static Map<String, Object?> _messageJson(LlmMessage m) => switch (m.role) {
+        LlmRole.tool => {'role': 'tool', 'callId': m.toolCallId, 'name': m.toolName, 'content': m.content},
+        LlmRole.assistant => {
+            'role': 'assistant',
+            'content': [
+              if (m.content.isNotEmpty) {'type': 'text', 'text': m.content},
+              for (final c in m.toolCalls) {'type': 'tool_call', 'id': c.id, 'name': c.name, 'args': _args(c.argumentsJson)},
+            ],
+          },
+        _ => {
+            'role': m.role.name,
+            'content': [
+              {'type': 'text', 'text': m.content},
+            ],
+          },
+      };
+
+  static String _text(Object? content) => [
+        for (final c in (content as List? ?? const []))
+          if (c is Map && c['type'] == 'text') '${c['text']}',
+      ].join();
+
+  static LlmMessage _messageFrom(Map<String, Object?> j) {
+    final content = j['content'];
+    switch (j['role']) {
+      case 'system':
+        return LlmMessage.system(_text(content));
+      case 'user':
+        return LlmMessage.user(_text(content));
+      case 'assistant':
+        return LlmMessage.assistant(_text(content), toolCalls: [
+          for (final c in (content as List? ?? const []))
+            if (c is Map && c['type'] == 'tool_call') LlmToolCall(id: '${c['id']}', name: '${c['name']}', argumentsJson: _argsText(c['args'])),
+        ]);
+      case 'tool':
+        return LlmMessage.toolResult(toolCallId: '${j['callId']}', toolName: '${j['name']}', content: '${content ?? ''}');
+      default:
+        throw FormatException('unknown message role ${j['role']}');
+    }
+  }
+
+  static Map<String, Object?> _itemJson(ChatItem i) => switch (i) {
+        UserItem() => {'kind': 'user', 'text': i.text},
+        AssistantItem() => {'kind': 'assistant', 'text': i.text.toString(), if (i.thinking.isNotEmpty) 'thinking': i.thinking.toString()},
+        ToolCallItem() => {
+            'kind': 'tool',
+            'callId': i.call.id,
+            'name': i.call.name,
+            'args': _args(i.call.argumentsJson),
+            'risk': i.risk?.name,
+            'status': i.status.name,
+            'result': i.result,
+            if (i.elapsed != null) 'ms': i.elapsed!.inMilliseconds,
+          },
+        NoteItem() => {'kind': 'note', 'text': i.text, if (i.isError) 'isError': true},
+      };
+
+  static ChatItem _itemFrom(Map<String, Object?> j) {
+    switch (j['kind']) {
+      case 'user':
+        return UserItem('${j['text']}');
+      case 'assistant':
+        return AssistantItem()
+          ..text.write(j['text'] ?? '')
+          ..thinking.write(j['thinking'] ?? '');
+      case 'tool':
+        final risk = McpToolRisk.values.where((r) => r.name == j['risk']).firstOrNull;
+        final item = ToolCallItem(call: LlmToolCall(id: '${j['callId']}', name: '${j['name']}', argumentsJson: _argsText(j['args'])), risk: risk);
+        var status = ToolCallStatus.values.where((s) => s.name == j['status']).firstOrNull ?? ToolCallStatus.failed;
+        var result = '${j['result'] ?? ''}';
+        // A card the editor closed on never finished.
+        if (status == ToolCallStatus.waitingApproval || status == ToolCallStatus.running) {
+          status = ToolCallStatus.failed;
+          result = result.isEmpty ? 'Interrupted: the chat was closed before this call finished.' : result;
+        }
+        item
+          ..status = status
+          ..result = result
+          ..elapsed = j['ms'] is int ? Duration(milliseconds: j['ms'] as int) : null;
+        return item;
+      case 'note':
+        return NoteItem('${j['text']}', isError: j['isError'] == true);
+      default:
+        throw FormatException('unknown item kind ${j['kind']}');
+    }
+  }
+
+  /// A chat read back from [toJson]; throws [FormatException] when [json]
+  /// is not a chat.
+  factory Chat.fromJson(Map<String, Object?> json) {
+    final id = json['id'];
+    if (id is! String || id.isEmpty) throw const FormatException('a chat needs an id');
+    final settings = Map<String, Object?>.from(json['settings'] as Map? ?? const {});
+    final mode = ApprovalMode.values.where((m) => m.name == settings['mode']).firstOrNull ?? ApprovalMode.ask;
+    final chat = Chat(id: id, mode: mode, createdAt: DateTime.tryParse('${json['createdAt']}'))
+      ..title = json['title'] as String? ?? defaultTitle
+      ..pinned = json['pinned'] == true
+      ..provider = settings['provider'] as String?
+      ..model = settings['model'] as String?;
+    chat.updatedAt = DateTime.tryParse('${json['updatedAt']}')?.toUtc() ?? chat.createdAt;
+    for (final t in (settings['alwaysAllowed'] as List? ?? const [])) {
+      chat.gate.alwaysAllow('$t');
+    }
+    final usage = json['usage'];
+    if (usage is Map) chat.lastUsage = Usage(promptTokens: usage['in'] as int? ?? 0, completionTokens: usage['out'] as int? ?? 0);
+    for (final m in (json['messages'] as List? ?? const [])) {
+      chat.history.add(_messageFrom(Map<String, Object?>.from(m as Map)));
+    }
+    for (final i in (json['items'] as List? ?? const [])) {
+      chat.items.add(_itemFrom(Map<String, Object?>.from(i as Map)));
+    }
+    for (final t in (json['turns'] as List? ?? const [])) {
+      chat.turns.add(TurnRecord.fromJson(Map<String, Object?>.from(t as Map)));
+    }
+    return chat;
+  }
+}

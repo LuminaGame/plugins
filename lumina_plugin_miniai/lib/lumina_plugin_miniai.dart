@@ -1,0 +1,24 @@
+/// MiniAI: an AI assistant inside Lumina Studio.
+library;
+
+export 'src/chat_panel.dart';
+export 'src/lumina_plugin_miniai_plugin.dart';
+export 'src/miniai_button_state.dart';
+export 'src/agent/approval.dart';
+export 'src/agent/toolset_selector.dart';
+export 'src/llm/llm_types.dart';
+export 'src/llm/openai_compat_provider.dart';
+export 'src/agent/agent_loop.dart';
+export 'src/agent/chat.dart';
+export 'src/agent/chat_store.dart';
+export 'src/history_view.dart';
+export 'src/miniai_controller.dart';
+export 'src/provider_dialog.dart';
+export 'src/settings/miniai_project_settings.dart';
+export 'src/settings/provider_settings.dart';
+export 'src/local/downloader.dart';
+export 'src/local/local_catalog.dart';
+export 'src/local/local_model_manager.dart';
+export 'src/connect/mcp_client_config.dart';
+export 'src/connect/connect_agents_dialog.dart';
+export 'src/api_keys_dialog.dart';

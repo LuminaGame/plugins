@@ -1,0 +1,22 @@
+{
+  "name": "lumina_plugin_pcg",
+  "friendly_name": "Procedural Content Generation",
+  "version": "0.1.0",
+  "description": "PCG Graph assets and PCG Volume actors that scatter static meshes over a landscape or a volume floor. The reference example of the Lumina plugin API.",
+  "category": "Procedural",
+  "license": "MIT",
+  "changelog": "CHANGELOG.md",
+  "authors": [
+    "Lumina"
+  ],
+  "engine_version": ">=0.0.1 <1.0.0",
+  "can_contain_content": false,
+  "modules": [
+    {
+      "name": "lumina_plugin_pcg",
+      "type": "editor",
+      "entry_library": "lib/lumina_plugin_pcg.dart",
+      "registration_class": "LuminaPluginPcgPlugin"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "lumina_plugin_miniai",
+  "friendly_name": "MiniAI",
+  "version": "0.1.0",
+  "description": "An AI assistant inside Lumina Studio: chat with a local or cloud model that works on your project through the editor MCP tools.",
+  "category": "AI",
+  "license": "MIT",
+  "changelog": "CHANGELOG.md",
+  "authors": [
+    "Lumina"
+  ],
+  "engine_version": ">=0.0.1 <1.0.0",
+  "can_contain_content": false,
+  "modules": [
+    {
+      "name": "lumina_plugin_miniai",
+      "type": "editor",
+      "entry_library": "lib/lumina_plugin_miniai.dart",
+      "registration_class": "LuminaPluginMiniaiPlugin"
+    }
+  ]
+}
