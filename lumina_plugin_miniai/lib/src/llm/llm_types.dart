@@ -1,5 +1,9 @@
 import 'dart:async';
 
+import 'chat_image.dart';
+
+export 'chat_image.dart';
+
 /// The provider-neutral conversation MiniAI keeps; each
 /// provider converts it to and from its own API.
 
@@ -23,17 +27,20 @@ class LlmMessage {
       : role = LlmRole.system,
         toolCalls = const [],
         toolCallId = null,
-        toolName = null;
+        toolName = null,
+        images = const [];
   const LlmMessage.user(this.content)
       : role = LlmRole.user,
         toolCalls = const [],
         toolCallId = null,
-        toolName = null;
+        toolName = null,
+        images = const [];
   const LlmMessage.assistant(this.content, {this.toolCalls = const []})
       : role = LlmRole.assistant,
         toolCallId = null,
-        toolName = null;
-  const LlmMessage.toolResult({required String this.toolCallId, required String this.toolName, required this.content})
+        toolName = null,
+        images = const [];
+  const LlmMessage.toolResult({required String this.toolCallId, required String this.toolName, required this.content, this.images = const []})
       : role = LlmRole.tool,
         toolCalls = const [];
 
@@ -44,6 +51,9 @@ class LlmMessage {
   /// For [LlmRole.tool]: the call it answers.
   final String? toolCallId;
   final String? toolName;
+
+  /// For [LlmRole.tool]: the images the tool returned.
+  final List<ChatImage> images;
 }
 
 /// A tool offered to the model: an MCP tool's name, description and input

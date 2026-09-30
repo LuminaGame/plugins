@@ -12,6 +12,7 @@ import 'local/local_model_manager.dart';
 import 'local_model_section.dart';
 import 'miniai_controller.dart';
 import 'provider_dialog.dart';
+import 'tool_images.dart';
 
 /// The AI Assistant panel, right-docked as `miniai.chat`: the
 /// chat title, mode and model; the conversation with tool-call and approval
@@ -681,6 +682,10 @@ class _ToolCallCardState extends State<_ToolCallCard> {
               ],
             ),
           ),
+          if (item.images.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            ToolImageThumbnails(callId: item.call.id, images: item.images),
+          ],
           if (_open || waiting) ...[
             const SizedBox(height: 6),
             Text(_pretty(item.call.argumentsJson), style: const TextStyle(fontSize: 10, fontFamily: 'monospace')),

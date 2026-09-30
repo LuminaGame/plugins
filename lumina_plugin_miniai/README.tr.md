@@ -18,6 +18,7 @@ Lumina Studio içinde bir AI asistan. Local ya da cloud bir modelle sohbet eders
   | Auto | her tool'u sormadan çalıştırır |
 
   Onay kartları **Allow**, **Always allow in this chat** ve **Deny** seçeneklerini sunar; **Stop** bir turn'ü iptal eder.
+- **Tool kartları**: her tool çağrısı adını, riskini, durumunu, argümanlarını ve sonucunu gösterir. Görüntü içeren bir sonuç (`viewport_screenshot`, `pie_advance`, `pie_play_for`, `asset_editor_screenshot`) küçük önizlemeler gösterir; birine tıklayınca tam boyutu açılır.
 - **Undo**: asistanın bir turn'ü tek bir Edit → Undo adımıdır. Bir turn'ün altındaki **Undo this turn**, onun level değişikliklerini geri alır (en yeni undo adımı olduğu sürece) ve dosya tool'larının değiştirdiği dosyaları geri yükler.
 - **Plugins → MiniAI** menüsü: AI Assistant, Connect External Agents…, API Keys…, About MiniAI.
 - **Project Settings → Plugins → AI Assistant**: yeni chat'ler için varsayılan mode, tercih edilen model provider, asistana hiç verilmeyecek tool grupları, turn başına en fazla tool round sayısı ve asistanın talimatlarına eklenen proje notları. Bunlar `.lmproject` içine kaydedilir.
@@ -42,6 +43,8 @@ Download'lar kaldığı yerden devam eder ve sabitlenmiş boyut ve SHA-256 hash'
 ### Herhangi bir OpenAI-compatible endpoint
 
 Local model yerine bir isim, `/v1` ile biten bir base URL (örneğin kendi llama-server'ınız için `http://127.0.0.1:8080/v1`, ya da bir Ollama, LM Studio, vLLM, OpenRouter veya OpenAI endpoint'i), bir model (**Test connection** server'ın modellerini listeler) ve opsiyonel bir API key girin.
+
+**Model accepts images**, editor tool'larının döndürdüğü ekran görüntülerine ne olacağını belirler. Açıkken en yeni ikisi modele görüntü olarak gider (tool sonuçlarından sonra bir user mesajında: chat completions API'si tool mesajlarında görüntüye izin vermez); daha eskileri ve görüntü okuyamayan bir model için her görüntü `[image/png 1280×720, 245 KB produced by the tool; not shown to the model]` gibi kısa bir nota dönüşür. Bilinen vision modellerinde (GPT-4o/4.1/5, Claude, Gemini, Llava, Qwen-VL, MiniCPM-V, Pixtral, Gemma 3, …) varsayılan olarak açık, diğerlerinde (paketle gelen MiniCPM5 dahil) kapalıdır; işaretleyerek ya da kaldırarak değiştirebilirsiniz. Bir chat en yeni 12 görüntüsünün piksellerini saklar.
 
 ### Claude Code
 

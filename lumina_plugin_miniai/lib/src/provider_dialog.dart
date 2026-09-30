@@ -1,6 +1,7 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'claude_code_section.dart';
+import 'llm/chat_image.dart';
 import 'llm/openai_compat_provider.dart';
 import 'local_model_section.dart';
 import 'miniai_controller.dart';
@@ -39,6 +40,9 @@ class _ProviderDialogState extends State<_ProviderDialog> {
   bool _statusError = false;
   bool _busy = false;
 
+  /// "Model accepts images" as the user set it; null follows the model name.
+  bool? _vision;
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +51,12 @@ class _ProviderDialogState extends State<_ProviderDialog> {
     final current = selected == null || selected.id == MiniAiController.localProviderId || selected.isClaudeCode ? null : selected;
     _name = TextEditingController(text: current?.name ?? 'Local model');
     _url = TextEditingController(text: current?.baseUrl ?? 'http://127.0.0.1:8080/v1');
-    _model = TextEditingController(text: current?.model ?? '');
+    _model = TextEditingController(text: current?.model ?? '')..addListener(_modelChanged);
+    _vision = current?.vision;
+  }
+
+  void _modelChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -97,7 +106,7 @@ class _ProviderDialogState extends State<_ProviderDialog> {
         (selected == null || selected.id == MiniAiController.localProviderId || selected.isClaudeCode ? null : selected.id) ??
             name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
     await widget.settings.save(
-      ProviderConfig(id: id, name: name, baseUrl: url, model: _model.text.trim(), local: ProviderConfig.isLoopback(url)),
+      ProviderConfig(id: id, name: name, baseUrl: url, model: _model.text.trim(), local: ProviderConfig.isLoopback(url), vision: _vision),
       apiKey: _key.text.isEmpty ? null : _key.text,
     );
     widget.close();
@@ -172,6 +181,28 @@ class _ProviderDialogState extends State<_ProviderDialog> {
                   ],
                 ),
               ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Checkbox(
+                    key: const ValueKey('miniai_provider_vision'),
+                    state: (_vision ?? VisionModels.guess(_model.text)) ? CheckboxState.checked : CheckboxState.unchecked,
+                    onChanged: (s) => setState(() => _vision = s == CheckboxState.checked),
+                    trailing: const Text('Model accepts images', style: TextStyle(fontSize: 11)),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _vision == null
+                        ? 'Automatic from the model name. Screenshots from the editor tools go to the model as images when on; '
+                            'as a short text note when off.'
+                        : 'Set by you. Screenshots from the editor tools go to the model as images when on; as a short text note when off.',
+                    style: const TextStyle(fontSize: 10),
+                  ).muted(),
+                ],
+              ),
+            ),
             _field(
               'API key',
               TextField(

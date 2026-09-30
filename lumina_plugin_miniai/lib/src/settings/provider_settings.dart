@@ -28,6 +28,7 @@ class ProviderConfig {
     this.local = false,
     this.kind = ProviderKind.openaiCompat,
     this.command,
+    this.vision,
   });
 
   /// The Claude Code provider's id.
@@ -48,6 +49,12 @@ class ProviderConfig {
   /// Claude Code: the `claude` executable the user chose; null finds it.
   final String? command;
 
+  /// "Model accepts images": null follows [VisionModels.guess].
+  final bool? vision;
+
+  /// Whether tool images go to this model as images.
+  bool get acceptsImages => vision ?? VisionModels.guess(model);
+
   bool get isClaudeCode => kind == ProviderKind.claudeCode;
 
   /// Claude Code may leave [model] empty: the CLI's default.
@@ -65,6 +72,7 @@ class ProviderConfig {
         local: json['local'] as bool? ?? false,
         kind: ProviderKind.values.where((k) => k.name == json['kind']).firstOrNull ?? ProviderKind.openaiCompat,
         command: json['command'] as String?,
+        vision: json['vision'] as bool?,
       );
 
   Map<String, Object?> toJson() => {
@@ -76,6 +84,7 @@ class ProviderConfig {
         'local': local,
         if (kind != ProviderKind.openaiCompat) 'kind': kind.name,
         'command': ?command,
+        'vision': ?vision,
       };
 
   /// Loopback endpoints are local models.
@@ -192,7 +201,7 @@ class ProviderSettings extends ChangeNotifier {
         baseUrl: config.baseUrl,
         apiKey: keyFor(config),
         client: httpClient,
-        capabilities: LlmCapabilities(tools: config.supportsTools, maxContext: config.local ? 8192 : 128000),
+        capabilities: LlmCapabilities(tools: config.supportsTools, vision: config.acceptsImages, maxContext: config.local ? 8192 : 128000),
       );
 
   /// `sk-…abcd` style, for display.

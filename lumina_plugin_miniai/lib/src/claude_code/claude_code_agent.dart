@@ -370,6 +370,9 @@ class _Turn {
     if (item == null) return;
     item.elapsed = _clocks[result.toolUseId]?.elapsed;
     item.result = result.text;
+    item.images = [
+      for (final image in result.images) ?ChatImage.fromContent(image, id: chat.newImageId(), source: '${item.call.name} (${result.toolUseId})'),
+    ];
     item.status = _denied.contains(result.toolUseId)
         ? ToolCallStatus.denied
         : (result.isError ? ToolCallStatus.failed : ToolCallStatus.done);

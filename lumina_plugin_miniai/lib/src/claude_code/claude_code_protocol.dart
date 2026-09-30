@@ -91,6 +91,11 @@ abstract final class ClaudeCodeProtocol {
             return ClaudeToolResult(
               toolUseId: '${b['tool_use_id']}',
               text: _resultText(b['content']),
+              images: [
+                if (b['content'] is List)
+                  for (final c in b['content'] as List)
+                    if (c is Map && c['type'] == 'image') Map<String, Object?>.from(c),
+              ],
               isError: b['is_error'] == true,
               parentToolUseId: m['parent_tool_use_id'] as String?,
             );
@@ -117,7 +122,7 @@ abstract final class ClaudeCodeProtocol {
     if (content is List) {
       return [
         for (final c in content)
-          if (c is Map && c['type'] == 'text') '${c['text']}' else if (c is Map && c['type'] == 'image') '[image]',
+          if (c is Map && c['type'] == 'text') '${c['text']}',
       ].join('\n');
     }
     return content == null ? '' : jsonEncode(content);
@@ -215,9 +220,12 @@ class ClaudeAssistant extends ClaudeEvent {
 }
 
 class ClaudeToolResult extends ClaudeEvent {
-  const ClaudeToolResult({required this.toolUseId, required this.text, required this.isError, this.parentToolUseId});
+  const ClaudeToolResult({required this.toolUseId, required this.text, required this.isError, this.parentToolUseId, this.images = const []});
   final String toolUseId;
   final String text;
+
+  /// The result's image blocks (`{type: image, source: {data, media_type}}`).
+  final List<Map<String, Object?>> images;
   final bool isError;
   final String? parentToolUseId;
 }

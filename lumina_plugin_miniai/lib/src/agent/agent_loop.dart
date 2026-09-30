@@ -160,10 +160,11 @@ class AgentLoop {
     chat.items.add(item);
     chat.changed();
 
-    void finish(ToolCallStatus status, String result) {
+    void finish(ToolCallStatus status, String result, {List<ChatImage> images = const []}) {
       item.status = status;
       item.result = result;
-      chat.history.add(LlmMessage.toolResult(toolCallId: call.id, toolName: call.name, content: _cut(result)));
+      item.images = images;
+      chat.history.add(LlmMessage.toolResult(toolCallId: call.id, toolName: call.name, content: _cut(result), images: images));
       chat.changed();
     }
 
@@ -205,8 +206,14 @@ class AgentLoop {
     try {
       final result = await mcp.callTool(call.name, args, caller: turn.caller);
       item.elapsed = sw.elapsed;
-      final text = result.content.map((c) => c['text'] ?? (c['type'] == 'image' ? '[image]' : '')).join('\n');
-      finish(result.isError ? ToolCallStatus.failed : ToolCallStatus.done, text);
+      // Text parts are the result; image parts (screenshots) travel apart:
+      // pixels for a model with vision, a placeholder otherwise.
+      final text = [for (final c in result.content) if (c['type'] != 'image' && c['text'] != null) '${c['text']}'].join('\n');
+      final images = [
+        for (final c in result.content)
+          if (c['type'] == 'image') ?ChatImage.fromContent(c, id: chat.newImageId(), source: '${call.name} (${call.id})'),
+      ];
+      finish(result.isError ? ToolCallStatus.failed : ToolCallStatus.done, text, images: images);
       // File tools leave snapshots "Undo this turn" restores.
       if (!result.isError && tool.risk != McpToolRisk.readOnly && tool.groups.any(fileGroups.contains)) turn.fileWrites++;
       return true;

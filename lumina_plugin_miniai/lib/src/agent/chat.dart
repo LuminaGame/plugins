@@ -35,6 +35,9 @@ class ToolCallItem extends ChatItem {
   String result = '';
   Duration? elapsed;
 
+  /// The images the result carried (screenshots), shown as thumbnails.
+  List<ChatImage> images = const [];
+
   /// Set while [status] is [ToolCallStatus.waitingApproval].
   Completer<ApprovalAnswer>? approval;
 }
@@ -172,29 +175,45 @@ class Chat extends ChangeNotifier {
   /// Messages the user sent (the History's count).
   int get messageCount => items.whereType<UserItem>().length;
 
+  /// The tool images, oldest first.
+  List<ChatImage> get images => [for (final i in items) if (i is ToolCallItem) ...i.images];
+
+  /// How many images keep their pixels in the chat file (the newest).
+  static const int keptImages = 12;
+
+  int _imageSeq = 0;
+
+  /// A new image id, unique in this chat.
+  String newImageId() => 'img${++_imageSeq}';
+
   // ── storage ──────────────────────────────────
 
   static const int formatVersion = 1;
 
-  Map<String, Object?> toJson() => {
-        'id': id,
-        'title': title,
-        'version': formatVersion,
-        'createdAt': createdAt.toIso8601String(),
-        'updatedAt': updatedAt.toIso8601String(),
-        'pinned': pinned,
-        'settings': {
-          'provider': provider,
-          'model': model,
-          'mode': gate.mode.name,
-          'alwaysAllowed': gate.alwaysAllowed.toList()..sort(),
-        },
-        if (lastUsage != null) 'usage': {'in': lastUsage!.promptTokens, 'out': lastUsage!.completionTokens},
-        'messages': [for (final m in history) _messageJson(m)],
-        'items': [for (final i in items) _itemJson(i)],
-        if (turns.isNotEmpty) 'turns': [for (final t in turns) t.toJson()],
-        if (providerData.isNotEmpty) 'providerData': providerData,
-      };
+  Map<String, Object?> toJson() {
+    final all = images;
+    final keep = all.length <= keptImages ? all.toSet() : all.sublist(all.length - keptImages).toSet();
+    return {
+      'id': id,
+      'title': title,
+      'version': formatVersion,
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+      'pinned': pinned,
+      'settings': {
+        'provider': provider,
+        'model': model,
+        'mode': gate.mode.name,
+        'alwaysAllowed': gate.alwaysAllowed.toList()..sort(),
+      },
+      if (lastUsage != null) 'usage': {'in': lastUsage!.promptTokens, 'out': lastUsage!.completionTokens},
+      'messages': [for (final m in history) _messageJson(m)],
+      'items': [for (final i in items) _itemJson(i)],
+      if (turns.isNotEmpty) 'turns': [for (final t in turns) t.toJson()],
+      if (providerData.isNotEmpty) 'providerData': providerData,
+      if (all.isNotEmpty) 'images': {for (final i in all) i.id: i.toJson(withData: keep.contains(i))},
+    };
+  }
 
   static Object? _args(String json) {
     try {
@@ -207,7 +226,13 @@ class Chat extends ChangeNotifier {
   static String _argsText(Object? args) => args is String ? args : jsonEncode(args ?? const {});
 
   static Map<String, Object?> _messageJson(LlmMessage m) => switch (m.role) {
-        LlmRole.tool => {'role': 'tool', 'callId': m.toolCallId, 'name': m.toolName, 'content': m.content},
+        LlmRole.tool => {
+            'role': 'tool',
+            'callId': m.toolCallId,
+            'name': m.toolName,
+            'content': m.content,
+            if (m.images.isNotEmpty) 'images': [for (final i in m.images) i.id],
+          },
         LlmRole.assistant => {
             'role': 'assistant',
             'content': [
@@ -228,7 +253,11 @@ class Chat extends ChangeNotifier {
           if (c is Map && c['type'] == 'text') '${c['text']}',
       ].join();
 
-  static LlmMessage _messageFrom(Map<String, Object?> j) {
+  static List<ChatImage> _imagesFrom(Object? ids, Map<String, ChatImage> images) => [
+        for (final id in (ids as List? ?? const [])) ?images['$id'],
+      ];
+
+  static LlmMessage _messageFrom(Map<String, Object?> j, Map<String, ChatImage> images) {
     final content = j['content'];
     switch (j['role']) {
       case 'system':
@@ -241,7 +270,12 @@ class Chat extends ChangeNotifier {
             if (c is Map && c['type'] == 'tool_call') LlmToolCall(id: '${c['id']}', name: '${c['name']}', argumentsJson: _argsText(c['args'])),
         ]);
       case 'tool':
-        return LlmMessage.toolResult(toolCallId: '${j['callId']}', toolName: '${j['name']}', content: '${content ?? ''}');
+        return LlmMessage.toolResult(
+          toolCallId: '${j['callId']}',
+          toolName: '${j['name']}',
+          content: '${content ?? ''}',
+          images: _imagesFrom(j['images'], images),
+        );
       default:
         throw FormatException('unknown message role ${j['role']}');
     }
@@ -259,11 +293,12 @@ class Chat extends ChangeNotifier {
             'status': i.status.name,
             'result': i.result,
             if (i.elapsed != null) 'ms': i.elapsed!.inMilliseconds,
+            if (i.images.isNotEmpty) 'images': [for (final image in i.images) image.id],
           },
         NoteItem() => {'kind': 'note', 'text': i.text, if (i.isError) 'isError': true},
       };
 
-  static ChatItem _itemFrom(Map<String, Object?> j) {
+  static ChatItem _itemFrom(Map<String, Object?> j, Map<String, ChatImage> images) {
     switch (j['kind']) {
       case 'user':
         return UserItem('${j['text']}');
@@ -284,7 +319,8 @@ class Chat extends ChangeNotifier {
         item
           ..status = status
           ..result = result
-          ..elapsed = j['ms'] is int ? Duration(milliseconds: j['ms'] as int) : null;
+          ..elapsed = j['ms'] is int ? Duration(milliseconds: j['ms'] as int) : null
+          ..images = _imagesFrom(j['images'], images);
         return item;
       case 'note':
         return NoteItem('${j['text']}', isError: j['isError'] == true);
@@ -311,11 +347,18 @@ class Chat extends ChangeNotifier {
     }
     final usage = json['usage'];
     if (usage is Map) chat.lastUsage = Usage(promptTokens: usage['in'] as int? ?? 0, completionTokens: usage['out'] as int? ?? 0);
+    final images = <String, ChatImage>{
+      for (final e in (json['images'] as Map? ?? const {}).entries) '${e.key}': ChatImage.fromJson('${e.key}', Map<String, Object?>.from(e.value as Map)),
+    };
+    for (final id in images.keys) {
+      final n = int.tryParse(id.replaceFirst('img', '')) ?? 0;
+      if (n > chat._imageSeq) chat._imageSeq = n;
+    }
     for (final m in (json['messages'] as List? ?? const [])) {
-      chat.history.add(_messageFrom(Map<String, Object?>.from(m as Map)));
+      chat.history.add(_messageFrom(Map<String, Object?>.from(m as Map), images));
     }
     for (final i in (json['items'] as List? ?? const [])) {
-      chat.items.add(_itemFrom(Map<String, Object?>.from(i as Map)));
+      chat.items.add(_itemFrom(Map<String, Object?>.from(i as Map), images));
     }
     for (final t in (json['turns'] as List? ?? const [])) {
       chat.turns.add(TurnRecord.fromJson(Map<String, Object?>.from(t as Map)));

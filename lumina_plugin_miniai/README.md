@@ -18,6 +18,7 @@ An AI assistant inside Lumina Studio. You chat with a local or cloud model, and 
   | Auto | runs every tool without asking |
 
   Approval cards offer **Allow**, **Always allow in this chat** and **Deny**; **Stop** cancels a turn.
+- **Tool cards**: each tool call shows its name, risk, status, arguments and result. A result with images (`viewport_screenshot`, `pie_advance`, `pie_play_for`, `asset_editor_screenshot`) shows small thumbnails; click one to see it full size.
 - **Undo**: one assistant turn is one Edit → Undo step. **Undo this turn** under a turn takes back its level changes (while it is the newest undo step) and restores the files its file tools changed.
 - **Plugins → MiniAI** menu: AI Assistant, Connect External Agents…, API Keys…, About MiniAI.
 - **Project Settings → Plugins → AI Assistant**: default mode for new chats, preferred model provider, tool groups the assistant never gets, max tool rounds per turn, and project notes added to the assistant's instructions. These are saved in the `.lmproject`.
@@ -42,6 +43,8 @@ A second click starts the server on the GPU you pick (by name; by default the on
 ### Any OpenAI-compatible endpoint
 
 Instead of the local model, enter a name, a base URL ending in `/v1` (for example `http://127.0.0.1:8080/v1` for your own llama-server, or an Ollama, LM Studio, vLLM, OpenRouter or OpenAI endpoint), a model (**Test connection** lists the server's models) and an optional API key.
+
+**Model accepts images** decides what happens to screenshots the editor tools return. On, the newest two go to the model as images (after the tool results, in a user message: the chat completions API allows no images in tool messages); older ones and every image for a model without vision become a short note such as `[image/png 1280×720, 245 KB produced by the tool; not shown to the model]`. It is on by default for known vision models (GPT-4o/4.1/5, Claude, Gemini, Llava, Qwen-VL, MiniCPM-V, Pixtral, Gemma 3, …) and off otherwise, the bundled MiniCPM5 included; tick or untick it to override. A chat keeps the pixels of its newest 12 images.
 
 ### Claude Code
 

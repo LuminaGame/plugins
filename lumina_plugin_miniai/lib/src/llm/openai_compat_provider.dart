@@ -14,6 +14,7 @@ class OpenAiCompatProvider implements LlmProvider {
     this.apiKey,
     this.extraHeaders = const {},
     this.capabilities = const LlmCapabilities(),
+    this.maxImages = 2,
     http.Client Function()? client,
   })  : baseUrl = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
         _client = client ?? http.Client.new;
@@ -25,6 +26,9 @@ class OpenAiCompatProvider implements LlmProvider {
   final String? apiKey;
   final Map<String, String> extraHeaders;
   final http.Client Function() _client;
+
+  /// How many of the newest tool images a vision model gets as pixels.
+  final int maxImages;
 
   @override
   final LlmCapabilities capabilities;
@@ -55,22 +59,84 @@ class OpenAiCompatProvider implements LlmProvider {
   }
 
   /// The request body (public for tests and logging).
-  Map<String, Object?> requestBody(LlmRequest request) => {
-        'model': request.model,
-        'stream': true,
-        'stream_options': {'include_usage': true},
-        'messages': [for (final m in request.messages) _message(m)],
-        if (request.tools.isNotEmpty)
-          'tools': [
-            for (final t in request.tools)
+  ///
+  /// A `tool` message cannot carry images in this API, so with
+  /// [LlmCapabilities.vision] the newest [maxImages] tool images follow their
+  /// run of tool messages as one `user` message of captioned `image_url`
+  /// parts; every other image is a text placeholder in its tool message.
+  Map<String, Object?> requestBody(LlmRequest request) {
+    final sent = _imagesToSend(request.messages);
+    final messages = <Map<String, Object?>>[];
+    final attached = <ChatImage>[];
+    for (var i = 0; i < request.messages.length; i++) {
+      final m = request.messages[i];
+      if (m.role != LlmRole.tool || m.images.isEmpty) {
+        messages.add(_message(m));
+      } else {
+        final notes = <String>[];
+        for (final image in m.images) {
+          if (sent.contains(image.id)) {
+            attached.add(image);
+            notes.add('[image ${attached.length}: attached below]');
+          } else {
+            notes.add(image.placeholder);
+          }
+        }
+        messages.add({
+          'role': 'tool',
+          'tool_call_id': m.toolCallId,
+          'name': m.toolName,
+          'content': [if (m.content.isNotEmpty) m.content, ...notes].join('\n'),
+        });
+      }
+      final next = i + 1 < request.messages.length ? request.messages[i + 1] : null;
+      if (attached.isNotEmpty && next?.role != LlmRole.tool) {
+        messages.add({
+          'role': 'user',
+          'content': [
+            for (var n = 0; n < attached.length; n++) ...[
+              {'type': 'text', 'text': 'Image ${n + 1} from ${attached[n].source ?? 'a tool'}:'},
               {
-                'type': 'function',
-                'function': {'name': t.name, 'description': t.description, 'parameters': t.parameters},
+                'type': 'image_url',
+                'image_url': {'url': attached[n].dataUri},
               },
+            ],
           ],
-        'temperature': ?request.temperature,
-        'max_tokens': ?request.maxTokens,
-      };
+        });
+        attached.clear();
+      }
+    }
+    return {
+      'model': request.model,
+      'stream': true,
+      'stream_options': {'include_usage': true},
+      'messages': messages,
+      if (request.tools.isNotEmpty)
+        'tools': [
+          for (final t in request.tools)
+            {
+              'type': 'function',
+              'function': {'name': t.name, 'description': t.description, 'parameters': t.parameters},
+            },
+        ],
+      'temperature': ?request.temperature,
+      'max_tokens': ?request.maxTokens,
+    };
+  }
+
+  /// The ids of the images sent as pixels: the newest [maxImages] kept ones,
+  /// none without vision.
+  Set<String> _imagesToSend(List<LlmMessage> messages) {
+    if (!capabilities.vision || maxImages <= 0) return const {};
+    final ids = <String>{};
+    for (final m in messages.reversed) {
+      for (final image in m.images.reversed) {
+        if (ids.length >= maxImages) return ids;
+        if (image.kept) ids.add(image.id);
+      }
+    }
+    return ids;
+  }
 
   static Map<String, Object?> _message(LlmMessage m) => switch (m.role) {
         LlmRole.system => {'role': 'system', 'content': m.content},
