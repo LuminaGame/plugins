@@ -22,3 +22,8 @@ export 'src/local/local_model_manager.dart';
 export 'src/connect/mcp_client_config.dart';
 export 'src/connect/connect_agents_dialog.dart';
 export 'src/api_keys_dialog.dart';
+export 'src/claude_code/claude_code_agent.dart';
+export 'src/claude_code/claude_code_cli.dart';
+export 'src/claude_code/claude_code_protocol.dart';
+export 'src/claude_code/claude_code_session.dart';
+export 'src/claude_code_section.dart';

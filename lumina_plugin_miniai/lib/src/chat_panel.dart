@@ -6,6 +6,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'agent/approval.dart';
 import 'agent/chat.dart';
+import 'claude_code/claude_code_protocol.dart';
 import 'history_view.dart';
 import 'local/local_model_manager.dart';
 import 'local_model_section.dart';
@@ -34,6 +35,12 @@ class _ChatPanelState extends State<ChatPanel> {
   bool _history = false;
   bool _editingTitle = false;
 
+  /// The highlighted row of the `/` command list.
+  int _slashIndex = 0;
+
+  /// Escape closed the list until the text changes.
+  String? _slashDismissed;
+
   MiniAiController get c => widget.controller;
 
   @override
@@ -41,6 +48,7 @@ class _ChatPanelState extends State<ChatPanel> {
     super.initState();
     c.addListener(_changed);
     c.mcp.toolsChanged.addListener(_changed);
+    _message.addListener(_messageChanged);
     _titleFocus.addListener(() {
       if (!_titleFocus.hasFocus && _editingTitle) _saveTitle();
     });
@@ -139,6 +147,7 @@ class _ChatPanelState extends State<ChatPanel> {
   void dispose() {
     c.removeListener(_changed);
     c.mcp.toolsChanged.removeListener(_changed);
+    _message.removeListener(_messageChanged);
     _message.dispose();
     _scroll.dispose();
     _title.dispose();
@@ -159,6 +168,39 @@ class _ChatPanelState extends State<ChatPanel> {
     if (text.trim().isEmpty || c.running || !c.settings.isConfigured) return;
     _message.clear();
     c.send(text);
+  }
+
+  /// The `/…` being typed (Claude Code only), or null.
+  String? get _slashQuery {
+    final text = _message.text;
+    if (!c.usesClaudeCode || !text.startsWith('/') || text.contains(RegExp(r'\s')) || text == _slashDismissed) return null;
+    return text.substring(1).toLowerCase();
+  }
+
+  /// The reported commands matching [_slashQuery]: prefix matches first.
+  List<ClaudeCommand> get _slashMatches {
+    final q = _slashQuery;
+    if (q == null) return const [];
+    final starts = [for (final cmd in c.claudeCommands) if (cmd.name.toLowerCase().startsWith(q)) cmd];
+    final contains = [for (final cmd in c.claudeCommands) if (!starts.contains(cmd) && cmd.name.toLowerCase().contains(q)) cmd];
+    return [...starts, ...contains];
+  }
+
+  void _messageChanged() {
+    if (_slashDismissed != null && _message.text != _slashDismissed) _slashDismissed = null;
+    if (_slashQuery != null && c.claudeCommands.isEmpty && c.claudeError == null) {
+      // The first `/`: start the chat's Claude Code process to learn its
+      // commands (no model call).
+      c.loadClaudeCommands();
+    }
+    setState(() => _slashIndex = 0);
+  }
+
+  /// Sends the chosen command as the message.
+  void _sendCommand(ClaudeCommand command) {
+    if (c.running) return;
+    _message.clear();
+    c.send('/${command.name}');
   }
 
   /// "N editor tools available (level, asset, …)": the groups by tool count.
@@ -227,7 +269,7 @@ class _ChatPanelState extends State<ChatPanel> {
                   density: ButtonDensity.compact,
                   onPressed: () => showProviderDialog(context, c.settings, controller: c),
                   child: Text(
-                    configured ? 'Model: ${c.settings.selected!.model}' : 'Set up a model provider…',
+                    configured ? 'Model: ${c.settings.selected!.label}' : 'Set up a model provider…',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontSize: 10),
@@ -237,6 +279,17 @@ class _ChatPanelState extends State<ChatPanel> {
             ],
           ),
         ),
+        if (c.claudeState != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+            child: Text(
+              c.claudeState!,
+              key: const ValueKey('miniai_claude_state'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 10, color: muted),
+            ),
+          ),
         const Divider(height: 16),
         Expanded(
           child: chat.items.isEmpty
@@ -302,13 +355,36 @@ class _ChatPanelState extends State<ChatPanel> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_slashQuery != null) _slashMenu(context),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: Focus(
                       onKeyEvent: (_, event) {
-                        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
+                        if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                        final matches = _slashMatches;
+                        if (matches.isNotEmpty) {
+                          final key = event.logicalKey;
+                          if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.arrowUp) {
+                            setState(() => _slashIndex = (_slashIndex + (key == LogicalKeyboardKey.arrowDown ? 1 : -1)) % matches.length);
+                            return KeyEventResult.handled;
+                          }
+                          if (key == LogicalKeyboardKey.tab) {
+                            final name = '/${matches[_slashIndex.clamp(0, matches.length - 1)].name} ';
+                            _message.value = TextEditingValue(text: name, selection: TextSelection.collapsed(offset: name.length));
+                            return KeyEventResult.handled;
+                          }
+                          if (key == LogicalKeyboardKey.escape) {
+                            setState(() => _slashDismissed = _message.text);
+                            return KeyEventResult.handled;
+                          }
+                          if (key == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
+                            _sendCommand(matches[_slashIndex.clamp(0, matches.length - 1)]);
+                            return KeyEventResult.handled;
+                          }
+                        }
+                        if (event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
                           _send();
                           return KeyEventResult.handled;
                         }
@@ -350,8 +426,11 @@ class _ChatPanelState extends State<ChatPanel> {
                 ),
               Text(
                 [
-                  if (configured) c.settings.selected!.model,
-                  if (chat.lastUsage != null) '${chat.lastUsage!.promptTokens + chat.lastUsage!.completionTokens} tokens last turn',
+                  if (configured) c.settings.selected!.label,
+                  if (c.usesClaudeCode && c.claudeUsage != null)
+                    c.claudeUsage!
+                  else if (chat.lastUsage != null)
+                    '${chat.lastUsage!.promptTokens + chat.lastUsage!.completionTokens} tokens last turn',
                   _toolSummary(),
                 ].join(' · '),
                 key: const ValueKey('miniai_tool_summary'),
@@ -394,6 +473,80 @@ class _ChatPanelState extends State<ChatPanel> {
     );
   }
 
+  /// The commands matching the `/…` typed so far; a click sends one.
+  Widget _slashMenu(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.mutedForeground;
+    final matches = _slashMatches;
+    final Widget body;
+    if (c.claudeError != null) {
+      body = Padding(
+        padding: const EdgeInsets.all(8),
+        child: Text(c.claudeError!, key: const ValueKey('miniai_slash_error'), style: TextStyle(fontSize: 10, color: theme.colorScheme.destructive)),
+      );
+    } else if (c.claudeCommands.isEmpty) {
+      body = Padding(padding: const EdgeInsets.all(8), child: Text('Asking Claude Code for its commands…', style: TextStyle(fontSize: 10, color: muted)));
+    } else if (matches.isEmpty) {
+      body = Padding(padding: const EdgeInsets.all(8), child: Text('No command matches.', style: TextStyle(fontSize: 10, color: muted)));
+    } else {
+      body = ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        children: [
+          for (var i = 0; i < matches.length; i++)
+            GestureDetector(
+              key: ValueKey('miniai_slash_${matches[i].name}'),
+              onTap: () => _sendCommand(matches[i]),
+              child: Container(
+                color: i == _slashIndex ? theme.colorScheme.accent : null,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('/${matches[i].name}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                    if (matches[i].argumentHint.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Flexible(
+                        flex: 0,
+                        child: Text(matches[i].argumentHint, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: muted)),
+                      ),
+                    ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(matches[i].description, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 10, color: muted)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    return Container(
+      key: const ValueKey('miniai_slash_menu'),
+      margin: const EdgeInsets.only(bottom: 6),
+      constraints: const BoxConstraints(maxHeight: 200),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.popover,
+        border: Border.all(color: theme.colorScheme.border),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: body,
+    );
+  }
+
+  /// [turn] changed the project (so its footer is shown).
+  bool _turnChanged(Chat chat, TurnRecord turn) {
+    if (turn.sceneStep || turn.fileWrites > 0 || turn.untracked > 0) return true;
+    if (turn.undoUnavailable == null) return false;
+    final end = _turnEnd(chat, turn);
+    for (var i = turn.userItemIndex; i <= end && i < chat.items.length; i++) {
+      final item = chat.items[i];
+      if (item is ToolCallItem && item.status == ToolCallStatus.done && (item.risk?.index ?? 0) > McpToolRisk.editorState.index) return true;
+    }
+    return false;
+  }
+
   /// The index of [turn]'s last item (the next turn starts after it).
   int _turnEnd(Chat chat, TurnRecord turn) {
     final at = chat.turns.indexOf(turn);
@@ -402,7 +555,7 @@ class _ChatPanelState extends State<ChatPanel> {
   }
 
   Widget _turnFooter(BuildContext context, TurnRecord turn) {
-    if (!turn.sceneStep && turn.fileWrites == 0) return const SizedBox.shrink();
+    if (!_turnChanged(c.chat, turn)) return const SizedBox.shrink();
     final muted = Theme.of(context).colorScheme.mutedForeground;
     final (enabled, reason) = c.canUndoTurn(turn);
     return Align(

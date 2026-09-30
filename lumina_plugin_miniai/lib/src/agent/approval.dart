@@ -54,9 +54,13 @@ class ApprovalGate {
         ApprovalMode.auto => ApprovalDecision.allow,
       };
 
-  ApprovalDecision decide(McpTool tool) {
-    final base = table(tool.risk, mode);
-    if (base == ApprovalDecision.ask && _alwaysAllowed.contains(tool.name)) return ApprovalDecision.allow;
+  ApprovalDecision decide(McpTool tool) => decideRisk(tool.name, tool.risk);
+
+  /// The decision for a tool known by [name] and [risk] only (an external
+  /// agent's own tools).
+  ApprovalDecision decideRisk(String name, McpToolRisk risk) {
+    final base = table(risk, mode);
+    if (base == ApprovalDecision.ask && _alwaysAllowed.contains(name)) return ApprovalDecision.allow;
     return base;
   }
 }

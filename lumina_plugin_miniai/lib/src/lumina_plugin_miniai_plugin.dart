@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
 import 'api_keys_dialog.dart';
 import 'chat_panel.dart';
+import 'claude_code/claude_code_agent.dart';
 import 'connect/connect_agents_dialog.dart';
 import 'miniai_button_state.dart';
 import 'miniai_controller.dart';
@@ -54,8 +56,26 @@ class LuminaPluginMiniaiPlugin extends LuminaEditorPlugin {
       transaction: level == null ? null : (label, body) => level.runTransaction(label, body),
       level: level,
       projectName: level == null ? null : _projectName(level.projectDirPath),
+      projectRoot: level?.projectDirPath,
     );
     unawaited(controller.load());
+
+    // Claude Code asks MiniAI before it runs a tool: the chat's approval
+    // mode decides, or an approval card does.
+    context.mcp.registerTool(McpTool(
+      name: ClaudeCodePermissions.toolName,
+      title: 'MiniAI permission prompt',
+      description: "Answers the permission requests of the Claude Code session MiniAI runs. Only MiniAI's own Claude Code "
+          'sessions use it; any other caller is denied.',
+      inputSchema: McpSchema.object({
+        'tool_name': McpSchema.string('The tool Claude Code wants to run.'),
+        'input': {'type': 'object', 'description': "The tool's input."},
+        'tool_use_id': McpSchema.string('The tool call id.'),
+      }, required: ['tool_name', 'input']),
+      risk: McpToolRisk.readOnly,
+      groups: const {McpToolGroups.plugin},
+      handler: (args) async => McpToolResult.text(jsonEncode(await controller.answerPermission(args.raw))),
+    ));
 
     context.registerPanel(
       EditorPanelDescriptor(
@@ -150,9 +170,13 @@ class LuminaPluginMiniaiPlugin extends LuminaEditorPlugin {
   @override
   Future<void> onProjectClosing() async => _controller?.flush();
 
-  /// The local llama-server never outlives the editor.
+  /// The local llama-server and the Claude Code process never outlive the
+  /// editor.
   @override
-  Future<void> onEditorShutdown() async => _controller?.local.stop();
+  Future<void> onEditorShutdown() async {
+    await _controller?.claude.close();
+    await _controller?.local.stop();
+  }
 
   @override
   void unregister(LuminaEditorContext context) {

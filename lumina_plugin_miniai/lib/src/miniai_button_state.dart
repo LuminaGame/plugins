@@ -49,7 +49,7 @@ class MiniAiButtonState {
           ? 'AI Assistant (MiniAI) — No model provider is set up yet'
           : pending > 0
           ? 'AI Assistant (MiniAI) — $pending tool call${pending == 1 ? '' : 's'} waiting for your approval'
-          : 'AI Assistant (MiniAI) — ${c!.settings.selected!.model}',
+          : 'AI Assistant (MiniAI) — ${c!.settings.selected!.label}',
     );
     next = pending > 0 ? next.copyWith(badge: '$pending') : next.withoutBadge;
     state.value = next;

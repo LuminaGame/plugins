@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
+import '../claude_code/claude_code_agent.dart' show ClaudeCodePermissions;
 import '../llm/llm_types.dart';
 import 'approval.dart';
 import 'chat.dart';
@@ -68,13 +69,13 @@ class AgentLoop {
       // The notes may have changed since the chat began.
       chat.history[0] = LlmMessage.system(systemPrompt(projectName: projectName, projectNotes: projectNotes));
     }
-    final label = 'AI: ${_titleOf(userText)}';
+    final label = 'AI: ${titleOf(userText)}';
     // Every turn has its own id; its tool calls carry it.
     final turn = TurnRecord(id: '${chat.id}:${chat.turns.length + 1}', label: label, userItemIndex: chat.items.length);
     chat.turns.add(turn);
     chat.items.add(UserItem(userText));
     chat.history.add(LlmMessage.user(userText));
-    if (chat.title == 'New chat') chat.title = _titleOf(userText);
+    if (chat.title == 'New chat') chat.title = titleOf(userText);
     chat.running = true;
     chat.changed();
     try {
@@ -93,7 +94,11 @@ class AgentLoop {
   }
 
   Future<void> _turn(Chat chat, TurnRecord turn, String userText, CancelToken token) async {
-    final all = mcp.listTools();
+    // MiniAI's own permission tool answers Claude Code, not the model.
+    final all = [
+      for (final t in mcp.listTools())
+        if (t.name != ClaudeCodePermissions.serverName && t.name != ClaudeCodePermissions.toolName) t,
+    ];
     final offered = selector.select(all, userText, chat.gate);
     final specs = [for (final t in offered) selector.specOf(t)];
     var badCalls = 0;
@@ -217,7 +222,8 @@ class AgentLoop {
 
   String _cut(String text) => text.length <= resultBudget ? text : '${text.substring(0, resultBudget)}\n… (${text.length - resultBudget} more characters cut)';
 
-  static String _titleOf(String text) {
+  /// A turn's title: the first line of [text], at most 48 characters.
+  static String titleOf(String text) {
     final line = text.trim().split('\n').first;
     return line.length <= 48 ? line : '${line.substring(0, 47)}…';
   }

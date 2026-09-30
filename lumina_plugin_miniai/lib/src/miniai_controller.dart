@@ -11,6 +11,9 @@ import 'agent/approval.dart';
 import 'agent/chat.dart';
 import 'agent/chat_store.dart';
 import 'agent/toolset_selector.dart';
+import 'claude_code/claude_code_agent.dart';
+import 'claude_code/claude_code_cli.dart';
+import 'claude_code/claude_code_protocol.dart';
 import 'llm/llm_types.dart';
 import 'local/local_model_manager.dart';
 import 'settings/miniai_project_settings.dart';
@@ -31,6 +34,9 @@ class MiniAiController extends ChangeNotifier {
     ApprovalMode Function()? defaultMode,
     Map<String, Object?> Function()? projectSettings,
     this.level,
+    this.projectRoot,
+    ClaudeCodeStarter? claudeStarter,
+    ClaudeCodeCli? claudeCli,
   }) : _defaultMode = defaultMode ?? (() => ApprovalMode.ask),
        _projectSettings = projectSettings ?? (() => const {}),
        settings = ProviderSettings(storage, environment: environment, httpClient: httpClient),
@@ -39,8 +45,30 @@ class MiniAiController extends ChangeNotifier {
     this.local.addListener(_localChanged);
     final projectDir = storage.projectDir;
     store = projectDir == null ? null : ChatStore(projectDir);
+    claude = ClaudeCodeAgent(
+      mcp: mcp,
+      workingDirectory: projectRoot ?? projectDir?.path ?? Directory.current.path,
+      configDir: projectDir,
+      transaction: transaction,
+      starter: claudeStarter,
+      cli: claudeCli ?? ClaudeCodeCli(environmentOverride: environment),
+    );
     _bindChat(Chat(id: _newId(), mode: _defaultMode()));
   }
+
+  /// The project folder (Claude Code runs there).
+  final String? projectRoot;
+
+  /// The Claude Code provider: the chat's `claude` process.
+  late final ClaudeCodeAgent claude;
+
+  /// The commands the open chat's Claude Code session accepts (empty until
+  /// [loadClaudeCommands]).
+  List<ClaudeCommand> claudeCommands = const [];
+
+  /// Why Claude Code could not start, for the panel.
+  String? claudeError;
+  bool _loadingCommands = false;
 
   /// The project's "Default mode for new chats".
   final ApprovalMode Function() _defaultMode;
@@ -214,6 +242,12 @@ class MiniAiController extends ChangeNotifier {
   bool _bound = false;
 
   void _bindChat(Chat next) {
+    if (_bound && !identical(chat, next)) {
+      // Another chat: its own Claude Code process, started on demand.
+      unawaited(claude.close());
+      claudeCommands = const [];
+      claudeError = null;
+    }
     if (_bound) chat.removeListener(notifyListeners);
     chat = next;
     _bound = true;
@@ -232,8 +266,9 @@ class MiniAiController extends ChangeNotifier {
   /// provider.
   Future<void> send(String text) async {
     final config = settings.selected;
-    if (text.trim().isEmpty || running || config == null || config.model.isEmpty) return;
+    if (text.trim().isEmpty || running || config == null || !config.isUsable) return;
     lastTurnFailed = false;
+    if (config.isClaudeCode) return _sendClaude(config, text.trim());
     if (needsLocalStart) {
       // Autostart: the server's port changes per start, so the provider is
       // re-read once it is ready.
@@ -276,15 +311,105 @@ class MiniAiController extends ChangeNotifier {
     if (identical(turn, chat)) await saveChat();
   }
 
+  Future<void> _sendClaude(ProviderConfig config, String text) async {
+    final cancel = _cancel = CancelToken();
+    final before = chat.items.length;
+    chat
+      ..provider = config.id
+      ..model = config.model.isEmpty ? null : config.model;
+    final turn = chat;
+    claudeError = null;
+    await claude.run(turn, text, model: config.model.isEmpty ? null : config.model, command: config.command, cancel: cancel);
+    if (turn.turns.isNotEmpty) turn.turns.last.sceneStep = level != null && level!.undoTopLabel == turn.turns.last.label;
+    lastTurnFailed = turn.items.skip(before).any((i) => i is NoteItem && i.isError);
+    _cancel = null;
+    turn.updatedAt = DateTime.now().toUtc();
+    _refreshCommandsFromInit();
+    notifyListeners();
+    if (identical(turn, chat)) await saveChat();
+  }
+
+  /// The selected provider is Claude Code.
+  bool get usesClaudeCode => settings.selected?.isClaudeCode ?? false;
+
+  /// Starts the open chat's Claude Code process (no model call) and reads
+  /// the commands it accepts.
+  Future<void> loadClaudeCommands() async {
+    final config = settings.selected;
+    if (config == null || !config.isClaudeCode || _loadingCommands) return;
+    _loadingCommands = true;
+    try {
+      await claude.ensureSession(chat, model: config.model.isEmpty ? null : config.model, command: config.command);
+      claudeError = null;
+      _refreshCommandsFromInit();
+    } on Object catch (e) {
+      claudeError = '$e';
+    } finally {
+      _loadingCommands = false;
+      notifyListeners();
+    }
+  }
+
+  /// Terminal-only commands, until `system/init` names them.
+  static const Set<String> _terminalOnly = {'doctor', 'color', 'focus', 'reload-plugins'};
+
+  void _refreshCommandsFromInit() {
+    final session = claude.session;
+    final reported = session?.capabilities?.commands ?? const <ClaudeCommand>[];
+    if (reported.isEmpty) return;
+    final init = session?.init;
+    final terminal = init == null ? _terminalOnly : init.terminalCommands.toSet();
+    final accepted = init?.slashCommands.toSet();
+    claudeCommands = [
+      for (final c in reported)
+        if (!c.name.startsWith('__') && !terminal.contains(c.name) && (accepted == null || accepted.contains(c.name))) c,
+    ];
+  }
+
+  /// Answers a Claude Code permission request (MiniAI's `permission_prompt`
+  /// MCP tool).
+  Future<Map<String, Object?>> answerPermission(Map<String, Object?> request) => claude.permission(request);
+
+  /// `Claude Code · <model> · session <id>` for the panel.
+  String? get claudeState {
+    final config = settings.selected;
+    if (config == null || !config.isClaudeCode) return null;
+    final data = chat.providerData[ClaudeCodeAgent.providerKey];
+    final session = claude.session;
+    final model = session?.init?.model ?? (data is Map ? data['model'] as String? : null) ?? (config.model.isEmpty ? 'default model' : config.model);
+    final id = session?.sessionId ?? (data is Map ? data['sessionId'] as String? : null);
+    return ['Claude Code', model, if (id != null) 'session ${id.length > 8 ? id.substring(0, 8) : id}'].join(' · ');
+  }
+
+  /// The session's cost, turns and time from the last result.
+  String? get claudeUsage {
+    final data = chat.providerData[ClaudeCodeAgent.providerKey];
+    if (data is! Map || data['costUsd'] == null) return null;
+    final cost = (data['costUsd'] as num).toDouble();
+    final turns = data['turns'] as int?;
+    final ms = data['durationMs'] as int?;
+    return [
+      '\$${cost.toStringAsFixed(cost < 1 ? 4 : 2)} this session',
+      if (turns != null) '$turns turn${turns == 1 ? '' : 's'}',
+      if (ms != null) '${(ms / 1000).toStringAsFixed(1)} s',
+    ].join(' · ');
+  }
+
   /// Whether [turn] can be taken back now, and why not.
   (bool, String) canUndoTurn(TurnRecord turn) {
     if (turn.undone) return (false, 'This turn was undone');
+    if (turn.undoUnavailable != null) return (false, turn.undoUnavailable!);
     if (running) return (false, 'Wait for the running turn to finish');
     if (turn.sceneStep && level?.undoTopLabel != turn.label) {
       return (false, 'Newer changes are on top of this turn in Edit ▸ Undo; undo them first');
     }
-    if (!turn.sceneStep && turn.fileWrites == 0) return (false, 'This turn changed nothing');
-    return (true, "Undo this turn's ${[if (turn.sceneStep) 'level changes', if (turn.fileWrites > 0) 'file changes'].join(' and ')}");
+    const untracked = "Claude Code's own file edits (Edit, Write, Bash) are not tracked here";
+    if (!turn.sceneStep && turn.fileWrites == 0) return (false, turn.untracked > 0 ? untracked : 'This turn changed nothing');
+    return (
+      true,
+      "Undo this turn's ${[if (turn.sceneStep) 'level changes', if (turn.fileWrites > 0) 'file changes'].join(' and ')}"
+          "${turn.untracked > 0 ? ' ($untracked)' : ''}",
+    );
   }
 
   /// Takes back [turnId]: its level undo step (only while it is the newest)
@@ -345,6 +470,7 @@ class MiniAiController extends ChangeNotifier {
   @override
   void dispose() {
     stop();
+    unawaited(claude.close());
     settings.removeListener(notifyListeners);
     local.removeListener(_localChanged);
     local.dispose();

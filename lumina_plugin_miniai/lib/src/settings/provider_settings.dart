@@ -7,10 +7,31 @@ import 'package:lumina_editor_api/lumina_editor_api.dart';
 import '../llm/llm_types.dart';
 import '../llm/openai_compat_provider.dart';
 
+/// What drives a provider.
+enum ProviderKind {
+  /// A `/v1/chat/completions` endpoint (the local model included).
+  openaiCompat,
+
+  /// The user's installed Claude Code CLI, headless.
+  claudeCode,
+}
+
 /// One model endpoint the user set up.
 @immutable
 class ProviderConfig {
-  const ProviderConfig({required this.id, required this.name, required this.baseUrl, required this.model, this.supportsTools = true, this.local = false});
+  const ProviderConfig({
+    required this.id,
+    required this.name,
+    required this.baseUrl,
+    required this.model,
+    this.supportsTools = true,
+    this.local = false,
+    this.kind = ProviderKind.openaiCompat,
+    this.command,
+  });
+
+  /// The Claude Code provider's id.
+  static const String claudeCodeId = 'claude_code';
 
   final String id;
   final String name;
@@ -22,17 +43,40 @@ class ProviderConfig {
 
   /// A model on this machine (smaller tool budget, fewer rounds).
   final bool local;
+  final ProviderKind kind;
+
+  /// Claude Code: the `claude` executable the user chose; null finds it.
+  final String? command;
+
+  bool get isClaudeCode => kind == ProviderKind.claudeCode;
+
+  /// Claude Code may leave [model] empty: the CLI's default.
+  bool get isUsable => isClaudeCode || model.isNotEmpty;
+
+  /// What the panel shows for this provider.
+  String get label => isClaudeCode ? 'Claude Code${model.isEmpty ? '' : ' ($model)'}' : model;
 
   factory ProviderConfig.fromJson(Map<String, Object?> json) => ProviderConfig(
         id: json['id'] as String,
         name: json['name'] as String? ?? json['id'] as String,
-        baseUrl: json['baseUrl'] as String,
+        baseUrl: json['baseUrl'] as String? ?? '',
         model: json['model'] as String? ?? '',
         supportsTools: json['supportsTools'] as bool? ?? true,
         local: json['local'] as bool? ?? false,
+        kind: ProviderKind.values.where((k) => k.name == json['kind']).firstOrNull ?? ProviderKind.openaiCompat,
+        command: json['command'] as String?,
       );
 
-  Map<String, Object?> toJson() => {'id': id, 'name': name, 'baseUrl': baseUrl, 'model': model, 'supportsTools': supportsTools, 'local': local};
+  Map<String, Object?> toJson() => {
+        'id': id,
+        'name': name,
+        'baseUrl': baseUrl,
+        'model': model,
+        'supportsTools': supportsTools,
+        'local': local,
+        if (kind != ProviderKind.openaiCompat) 'kind': kind.name,
+        'command': ?command,
+      };
 
   /// Loopback endpoints are local models.
   static bool isLoopback(String baseUrl) {
@@ -74,7 +118,7 @@ class ProviderSettings extends ChangeNotifier {
     notifyListeners();
     return true;
   }
-  bool get isConfigured => selected != null && selected!.model.isNotEmpty;
+  bool get isConfigured => selected?.isUsable ?? false;
 
   Future<void> load() async {
     final data = await storage.readJson('providers');

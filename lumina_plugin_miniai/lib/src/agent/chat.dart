@@ -48,7 +48,16 @@ class NoteItem extends ChatItem {
 
 /// One assistant turn: what "Undo this turn" can take back.
 class TurnRecord {
-  TurnRecord({required this.id, required this.label, required this.userItemIndex, this.sceneStep = false, this.fileWrites = 0, this.undone = false});
+  TurnRecord({
+    required this.id,
+    required this.label,
+    required this.userItemIndex,
+    this.sceneStep = false,
+    this.fileWrites = 0,
+    this.undone = false,
+    this.untracked = 0,
+    this.undoUnavailable,
+  });
 
   /// `<chatId>:<n>`; the tool caller is `miniai:<id>`.
   final String id;
@@ -66,6 +75,14 @@ class TurnRecord {
   int fileWrites;
   bool undone;
 
+  /// Changes an external agent made with its own tools (Claude Code's
+  /// Edit, Write, Bash): not on the undo stack, no snapshots.
+  int untracked;
+
+  /// Why this turn cannot be undone here at all (the editor could not
+  /// attribute an external agent's calls to it); null when it can.
+  String? undoUnavailable;
+
   String get caller => 'miniai:$id';
 
   Map<String, Object?> toJson() => {
@@ -75,6 +92,8 @@ class TurnRecord {
         if (sceneStep) 'sceneStep': true,
         if (fileWrites > 0) 'fileWrites': fileWrites,
         if (undone) 'undone': true,
+        if (untracked > 0) 'untracked': untracked,
+        'undoUnavailable': ?undoUnavailable,
       };
 
   factory TurnRecord.fromJson(Map<String, Object?> j) => TurnRecord(
@@ -84,6 +103,8 @@ class TurnRecord {
         sceneStep: j['sceneStep'] == true,
         fileWrites: j['fileWrites'] as int? ?? 0,
         undone: j['undone'] == true,
+        untracked: j['untracked'] as int? ?? 0,
+        undoUnavailable: j['undoUnavailable'] as String?,
       );
 }
 
@@ -130,6 +151,10 @@ class Chat extends ChangeNotifier {
   bool running = false;
   Usage? lastUsage;
 
+  /// Per-provider data kept with the chat (`claude_code`: the CLI's session
+  /// id, model and cost), so the same provider can continue it.
+  final Map<String, Object?> providerData = {};
+
   /// The tool calls waiting for the user.
   List<ToolCallItem> get pendingApprovals =>
       [for (final i in items) if (i is ToolCallItem && i.status == ToolCallStatus.waitingApproval) i];
@@ -168,6 +193,7 @@ class Chat extends ChangeNotifier {
         'messages': [for (final m in history) _messageJson(m)],
         'items': [for (final i in items) _itemJson(i)],
         if (turns.isNotEmpty) 'turns': [for (final t in turns) t.toJson()],
+        if (providerData.isNotEmpty) 'providerData': providerData,
       };
 
   static Object? _args(String json) {
@@ -294,6 +320,8 @@ class Chat extends ChangeNotifier {
     for (final t in (json['turns'] as List? ?? const [])) {
       chat.turns.add(TurnRecord.fromJson(Map<String, Object?>.from(t as Map)));
     }
+    final data = json['providerData'];
+    if (data is Map) chat.providerData.addAll(Map<String, Object?>.from(data));
     return chat;
   }
 }

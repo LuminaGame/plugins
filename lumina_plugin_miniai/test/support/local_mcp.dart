@@ -32,6 +32,26 @@ class LocalMcp extends EditorMcp {
   @override
   Stream<McpToolCallEvent> get calls => _calls.stream;
 
+  /// The stdio launch an editor would hand out; null: no editor server.
+  McpClientLaunch? launch;
+
+  @override
+  McpClientLaunch? get clientLaunch => launch;
+
+  /// Whether this registry ties tagged external sessions to a caller, like
+  /// the editor's; each binding is recorded as (tag, caller).
+  bool attributes = false;
+  final List<(String, String)> attributions = [];
+
+  @override
+  bool get attributesExternalCalls => attributes;
+
+  @override
+  Future<T> attributeExternalCalls<T>(String clientTag, String caller, Future<T> Function() body) {
+    if (attributes) attributions.add((clientTag, caller));
+    return body();
+  }
+
   @override
   McpChangeSignal get toolsChanged => _changed;
 }

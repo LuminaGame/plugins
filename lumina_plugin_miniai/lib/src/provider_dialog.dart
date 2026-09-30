@@ -1,5 +1,6 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import 'claude_code_section.dart';
 import 'llm/openai_compat_provider.dart';
 import 'local_model_section.dart';
 import 'miniai_controller.dart';
@@ -43,7 +44,7 @@ class _ProviderDialogState extends State<_ProviderDialog> {
     super.initState();
     final selected = widget.settings.selected;
     // The local model's entry belongs to the manager; the form edits others.
-    final current = selected?.id == MiniAiController.localProviderId ? null : selected;
+    final current = selected == null || selected.id == MiniAiController.localProviderId || selected.isClaudeCode ? null : selected;
     _name = TextEditingController(text: current?.name ?? 'Local model');
     _url = TextEditingController(text: current?.baseUrl ?? 'http://127.0.0.1:8080/v1');
     _model = TextEditingController(text: current?.model ?? '');
@@ -93,7 +94,8 @@ class _ProviderDialogState extends State<_ProviderDialog> {
     final name = _name.text.trim().isEmpty ? 'Model' : _name.text.trim();
     final selected = widget.settings.selected;
     final id =
-        (selected == null || selected.id == MiniAiController.localProviderId ? null : selected.id) ?? name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+        (selected == null || selected.id == MiniAiController.localProviderId || selected.isClaudeCode ? null : selected.id) ??
+            name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
     await widget.settings.save(
       ProviderConfig(id: id, name: name, baseUrl: url, model: _model.text.trim(), local: ProviderConfig.isLoopback(url)),
       apiKey: _key.text.isEmpty ? null : _key.text,
@@ -116,18 +118,23 @@ class _ProviderDialogState extends State<_ProviderDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final current = widget.settings.selected;
+    final selected = widget.settings.selected;
+    final current = selected == null || selected.isClaudeCode ? null : selected;
     final hasKey = current != null && widget.settings.hasKey(current);
     return AlertDialog(
       title: const Text('Model provider'),
       content: SizedBox(
         width: 460,
-        child: Column(
+        height: MediaQuery.sizeOf(context).height * 0.7,
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.controller != null) ...[
               LocalModelSection(controller: widget.controller!),
+              const SizedBox(height: 14),
+              ClaudeCodeSection(controller: widget.controller!, onUsed: widget.close),
               const SizedBox(height: 14),
               const Text('Or an endpoint', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
               const SizedBox(height: 4),
@@ -182,6 +189,7 @@ class _ProviderDialogState extends State<_ProviderDialog> {
                 style: TextStyle(fontSize: 11, color: _statusError ? Theme.of(context).colorScheme.destructive : null),
               ),
           ],
+          ),
         ),
       ),
       actions: [

@@ -119,11 +119,16 @@ void main() {
     await pumpPanel(tester, width: 900);
     await tester.tap(find.byKey(const ValueKey('miniai_setup_provider')));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('miniai_provider_url')));
+    await tester.pump();
     await tester.enterText(find.byKey(const ValueKey('miniai_provider_url')), server.baseUrl);
     await tester.enterText(find.byKey(const ValueKey('miniai_provider_key')), 'sk-test-1234567890');
     await tester.tap(find.byKey(const ValueKey('miniai_provider_test')));
     await drive(tester, () => find.byKey(const ValueKey('miniai_provider_status')).evaluate().isNotEmpty);
     expect(find.textContaining('Connected: 1 model'), findsOneWidget);
+    // The dialog scrolls: the Claude Code section sits above the endpoint form.
+    await tester.ensureVisible(find.byKey(const ValueKey('miniai_provider_pick_MiniCPM5-2B-Q4_K_M')));
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('miniai_provider_pick_MiniCPM5-2B-Q4_K_M')));
     await tester.pump();
     await tester.tap(find.byKey(const ValueKey('miniai_provider_save')));
