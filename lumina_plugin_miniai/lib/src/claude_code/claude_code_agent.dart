@@ -276,7 +276,9 @@ class _Turn {
   }
 
   void _text(String text) {
-    _assistant().text.write(text);
+    _assistant()
+      ..endThinking()
+      ..text.write(text);
     answer.write(text);
     chat.changed();
   }
@@ -291,6 +293,9 @@ class _Turn {
       case ClaudeTextDelta(:final text):
         if (_message != null) _streamed.add(_message!);
         _text(text);
+      case ClaudeThinkingDelta(:final text):
+        _assistant().addThinking(text);
+        chat.changed();
       case ClaudeAssistant():
         if (event.parentToolUseId != null) return false;
         for (final b in event.blocks) {
@@ -361,6 +366,7 @@ class _Turn {
   final Map<String, String> _names = {};
 
   void _toolUse(ClaudeToolUse use) {
+    _endThinking();
     _names[use.id] = use.name;
     _card(use.id, use.name, use.input);
   }
@@ -387,7 +393,13 @@ class _Turn {
     chat.changed();
   }
 
+  void _endThinking() {
+    final last = chat.items.isEmpty ? null : chat.items.last;
+    if (last is AssistantItem) last.endThinking();
+  }
+
   void _result(ClaudeResult result) {
+    _endThinking();
     final data = Map<String, Object?>.from(chat.providerData[ClaudeCodeAgent.providerKey] as Map? ?? const {});
     if (result.sessionId.isNotEmpty) data['sessionId'] = result.sessionId;
     if (result.totalCostUsd != null) data['costUsd'] = result.totalCostUsd;
@@ -453,6 +465,7 @@ class _Turn {
 
   /// Cards that never got a result end as failed.
   void finish() {
+    _endThinking();
     denyPending('the turn ended');
     for (final item in _calls.values) {
       if (item.status == ToolCallStatus.running || item.status == ToolCallStatus.waitingApproval) {

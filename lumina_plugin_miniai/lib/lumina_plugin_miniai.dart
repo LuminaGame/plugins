@@ -28,3 +28,4 @@ export 'src/claude_code/claude_code_protocol.dart';
 export 'src/claude_code/claude_code_session.dart';
 export 'src/claude_code_section.dart';
 export 'src/tool_images.dart';
+export 'src/thinking_row.dart';

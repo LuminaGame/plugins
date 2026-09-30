@@ -110,11 +110,14 @@ class AgentLoop {
       await for (final event in provider.stream(LlmRequest(model: model, messages: List.of(chat.history), tools: specs), cancel: token)) {
         switch (event) {
           case TextDelta(:final text):
+            assistant.endThinking();
             assistant.text.write(text);
             chat.changed();
           case ThinkingDelta(:final text):
-            assistant.thinking.write(text);
+            assistant.addThinking(text);
+            chat.changed();
           case ToolCallEvent(:final call):
+            assistant.endThinking();
             calls.add(call);
           case Usage():
             chat.lastUsage = event;
@@ -124,7 +127,8 @@ class AgentLoop {
             error = event;
         }
       }
-      if (assistant.text.isEmpty && assistant.thinking.isEmpty) chat.items.remove(assistant);
+      assistant.endThinking();
+      if (assistant.text.isEmpty && !assistant.hasThinking) chat.items.remove(assistant);
       if (token.isCancelled) {
         chat.items.add(NoteItem('Stopped.'));
         return;

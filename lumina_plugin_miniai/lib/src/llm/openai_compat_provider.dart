@@ -183,6 +183,7 @@ class OpenAiCompatProvider implements LlmProvider {
         return;
       }
       final calls = <int, _PartialCall>{};
+      final think = ThinkTagSplitter();
       String? finish;
       final lines = response.stream.transform(utf8.decoder).transform(const LineSplitter());
       await for (final line in lines) {
@@ -210,10 +211,17 @@ class OpenAiCompatProvider implements LlmProvider {
         final choice = choices.first as Map;
         final delta = choice['delta'];
         if (delta is Map) {
-          final reasoning = delta['reasoning_content'];
+          // llama.cpp, DeepSeek and vLLM: `reasoning_content`; OpenRouter and
+          // Ollama: `reasoning`.
+          final reasoning = delta['reasoning_content'] ?? delta['reasoning'];
           if (reasoning is String && reasoning.isNotEmpty) yield ThinkingDelta(reasoning);
           final content = delta['content'];
-          if (content is String && content.isNotEmpty) yield TextDelta(content);
+          if (content is String && content.isNotEmpty) {
+            // Servers that do not parse reasoning leave `<think>…</think>` in it.
+            for (final (thinking, text) in think.feed(content)) {
+              yield thinking ? ThinkingDelta(text) : TextDelta(text);
+            }
+          }
           final toolCalls = delta['tool_calls'];
           if (toolCalls is List) {
             for (final raw in toolCalls) {
@@ -231,6 +239,9 @@ class OpenAiCompatProvider implements LlmProvider {
         }
         final reason = choice['finish_reason'];
         if (reason is String) finish = reason;
+      }
+      for (final (thinking, text) in think.flush()) {
+        yield thinking ? ThinkingDelta(text) : TextDelta(text);
       }
       final ordered = calls.keys.toList()..sort();
       for (final i in ordered) {
@@ -267,4 +278,52 @@ class _PartialCall {
   String? id;
   String name = '';
   final StringBuffer arguments = StringBuffer();
+}
+
+/// Splits streamed `content` on `<think>` / `</think>` tags that may arrive
+/// cut across chunks: (true, text) is reasoning, (false, text) the answer.
+class ThinkTagSplitter {
+  static const String _open = '<think>';
+  static const String _close = '</think>';
+
+  bool _inside = false;
+  String _carry = '';
+
+  /// The pieces of [chunk] that are complete; a possible tag start at its
+  /// end waits for the next chunk.
+  List<(bool, String)> feed(String chunk) {
+    var text = _carry + chunk;
+    _carry = '';
+    final out = <(bool, String)>[];
+    while (text.isNotEmpty) {
+      final tag = _inside ? _close : _open;
+      final at = text.indexOf(tag);
+      if (at >= 0) {
+        if (at > 0) out.add((_inside, text.substring(0, at)));
+        _inside = !_inside;
+        text = text.substring(at + tag.length);
+        continue;
+      }
+      // Keep a trailing prefix of the tag (`<thi`) for the next chunk.
+      var keep = 0;
+      for (var n = tag.length - 1; n > 0; n--) {
+        if (text.endsWith(tag.substring(0, n))) {
+          keep = n;
+          break;
+        }
+      }
+      final ready = text.substring(0, text.length - keep);
+      if (ready.isNotEmpty) out.add((_inside, ready));
+      _carry = text.substring(text.length - keep);
+      break;
+    }
+    return out;
+  }
+
+  /// What is left at the end of the stream.
+  List<(bool, String)> flush() {
+    final rest = _carry;
+    _carry = '';
+    return rest.isEmpty ? const [] : [(_inside, rest)];
+  }
 }

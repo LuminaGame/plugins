@@ -21,7 +21,38 @@ class UserItem extends ChatItem {
 
 class AssistantItem extends ChatItem {
   final StringBuffer text = StringBuffer();
+
+  /// The model's reasoning, as it streamed (empty when the provider only
+  /// says that it thinks, as Claude Code does by default).
   final StringBuffer thinking = StringBuffer();
+
+  /// When the reasoning started; null when the model did not think.
+  DateTime? thinkingStarted;
+
+  /// How long it thought; null while it still thinks.
+  Duration? thinkingTook;
+
+  /// The model thought (text or not).
+  bool get hasThinking => thinkingStarted != null || thinkingTook != null || thinking.isNotEmpty;
+
+  /// The reasoning started and has not ended yet.
+  bool get thinkingActive => thinkingStarted != null && thinkingTook == null;
+
+  /// Adds streamed reasoning [text] (may be empty: the model thinks
+  /// without sharing it).
+  void addThinking(String text, {DateTime? now}) {
+    if (thinkingTook != null) return;
+    thinkingStarted ??= now ?? DateTime.now();
+    thinking.write(text);
+  }
+
+  /// The reasoning ended (the answer or a tool call began, or the stream
+  /// ended).
+  void endThinking({DateTime? now}) {
+    final started = thinkingStarted;
+    if (started == null || thinkingTook != null) return;
+    thinkingTook = (now ?? DateTime.now()).difference(started);
+  }
 }
 
 class ToolCallItem extends ChatItem {
@@ -283,7 +314,12 @@ class Chat extends ChangeNotifier {
 
   static Map<String, Object?> _itemJson(ChatItem i) => switch (i) {
         UserItem() => {'kind': 'user', 'text': i.text},
-        AssistantItem() => {'kind': 'assistant', 'text': i.text.toString(), if (i.thinking.isNotEmpty) 'thinking': i.thinking.toString()},
+        AssistantItem() => {
+            'kind': 'assistant',
+            'text': i.text.toString(),
+            if (i.thinking.isNotEmpty) 'thinking': i.thinking.toString(),
+            if (i.thinkingTook != null) 'thinkingMs': i.thinkingTook!.inMilliseconds,
+          },
         ToolCallItem() => {
             'kind': 'tool',
             'callId': i.call.id,
@@ -305,7 +341,8 @@ class Chat extends ChangeNotifier {
       case 'assistant':
         return AssistantItem()
           ..text.write(j['text'] ?? '')
-          ..thinking.write(j['thinking'] ?? '');
+          ..thinking.write(j['thinking'] ?? '')
+          ..thinkingTook = j['thinkingMs'] is int ? Duration(milliseconds: j['thinkingMs'] as int) : null;
       case 'tool':
         final risk = McpToolRisk.values.where((r) => r.name == j['risk']).firstOrNull;
         final item = ToolCallItem(call: LlmToolCall(id: '${j['callId']}', name: '${j['name']}', argumentsJson: _argsText(j['args'])), risk: risk);

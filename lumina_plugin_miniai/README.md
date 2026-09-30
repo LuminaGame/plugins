@@ -19,6 +19,7 @@ An AI assistant inside Lumina Studio. You chat with a local or cloud model, and 
 
   Approval cards offer **Allow**, **Always allow in this chat** and **Deny**; **Stop** cancels a turn.
 - **Tool cards**: each tool call shows its name, risk, status, arguments and result. A result with images (`viewport_screenshot`, `pie_advance`, `pie_play_for`, `asset_editor_screenshot`) shows small thumbnails; click one to see it full size.
+- **Thinking**: when the model reasons before it answers (llama.cpp's `reasoning_content`, a `reasoning` field, inline `<think>` tags, Claude Code's thinking blocks), the answer gets one collapsed row: **Thinking…** with animated dots while it thinks, **Thought for N s** after. Click it to read the reasoning as it streams, in a box at most 100 px high that follows the text unless you scroll up. Claude Code does not share its reasoning text by default; its row says so.
 - **Undo**: one assistant turn is one Edit → Undo step. **Undo this turn** under a turn takes back its level changes (while it is the newest undo step) and restores the files its file tools changed.
 - **Plugins → MiniAI** menu: AI Assistant, Connect External Agents…, API Keys…, About MiniAI.
 - **Project Settings → Plugins → AI Assistant**: default mode for new chats, preferred model provider, tool groups the assistant never gets, max tool rounds per turn, and project notes added to the assistant's instructions. These are saved in the `.lmproject`.

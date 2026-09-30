@@ -12,6 +12,7 @@ import 'local/local_model_manager.dart';
 import 'local_model_section.dart';
 import 'miniai_controller.dart';
 import 'provider_dialog.dart';
+import 'thinking_row.dart';
 import 'tool_images.dart';
 
 /// The AI Assistant panel, right-docked as `miniai.chat`: the
@@ -592,17 +593,27 @@ class _ChatPanelState extends State<ChatPanel> {
             child: Text(text, style: const TextStyle(fontSize: 11)),
           ),
         ),
-        // Reasoning without text yet: "Thinking…" while the turn runs, then
-        // nothing (the thinking itself stays in the chat model).
-        AssistantItem() =>
-          item.text.isEmpty
-              ? (chat.running && identical(item, chat.items.whereType<AssistantItem>().lastOrNull)
-                    ? Text(
-                        'Thinking…',
-                        style: TextStyle(fontSize: 10, color: theme.colorScheme.mutedForeground, fontStyle: FontStyle.italic),
-                      )
-                    : const SizedBox.shrink())
-              : SelectableText(item.text.toString().trim(), key: ValueKey('miniai_assistant_$index'), style: const TextStyle(fontSize: 11)),
+        // The reasoning as one collapsible row, then the answer. Before the
+        // first token of a model that does not reason: animated dots.
+        AssistantItem() => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (item.hasThinking)
+              ThinkingRow(key: ValueKey('miniai_thinking_$index'), item: item, active: chat.running && item.thinkingActive)
+            else if (item.text.isEmpty && chat.running && identical(item, chat.items.whereType<AssistantItem>().lastOrNull))
+              Row(
+                key: ValueKey('miniai_waiting_$index'),
+                children: [
+                  Text('Thinking', style: TextStyle(fontSize: 10, color: theme.colorScheme.mutedForeground)),
+                  ThinkingDots(style: TextStyle(fontSize: 10, color: theme.colorScheme.mutedForeground)),
+                ],
+              ),
+            if (item.hasThinking && item.text.isNotEmpty) const SizedBox(height: 4),
+            if (item.text.isNotEmpty)
+              SelectableText(item.text.toString().trim(), key: ValueKey('miniai_assistant_$index'), style: const TextStyle(fontSize: 11)),
+          ],
+        ),
         NoteItem(:final text, :final isError) => Text(
           text,
           key: ValueKey('miniai_note_$index'),

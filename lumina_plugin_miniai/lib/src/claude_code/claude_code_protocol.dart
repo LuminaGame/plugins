@@ -48,9 +48,15 @@ abstract final class ClaudeCodeProtocol {
           final message = event['message'];
           return ClaudeMessageStart(message is Map ? '${message['id']}' : '');
         }
+        if (event['type'] == 'content_block_start') {
+          final block = event['content_block'];
+          if (block is Map && block['type'] == 'thinking') return ClaudeThinkingDelta('${block['thinking'] ?? ''}');
+        }
         if (event['type'] == 'content_block_delta') {
           final delta = event['delta'];
           if (delta is Map && delta['type'] == 'text_delta' && delta['text'] is String) return ClaudeTextDelta(delta['text'] as String);
+          // With the CLI's default thinking display the text is empty.
+          if (delta is Map && delta['type'] == 'thinking_delta') return ClaudeThinkingDelta('${delta['thinking'] ?? ''}');
         }
         return null;
       case 'assistant':
@@ -184,6 +190,13 @@ class ClaudeMessageStart extends ClaudeEvent {
 
 class ClaudeTextDelta extends ClaudeEvent {
   const ClaudeTextDelta(this.text);
+  final String text;
+}
+
+/// The model thinks: a thinking block starts or grows ([text] may be
+/// empty when the CLI does not share it).
+class ClaudeThinkingDelta extends ClaudeEvent {
+  const ClaudeThinkingDelta(this.text);
   final String text;
 }
 

@@ -57,7 +57,9 @@ class ReplayServer {
     }
     final name = queue.isEmpty ? 'text' : queue.removeAt(0);
     response.headers.contentType = ContentType('text', 'event-stream');
-    final bytes = utf8.encode(fixture(name));
+    // A queued `data: …` string is a stream body itself (a documented shape
+    // no recorded server produced).
+    final bytes = utf8.encode(name.startsWith('data:') ? name : fixture(name));
     final delay = chunkDelay;
     if (delay == null) {
       response.add(bytes);
