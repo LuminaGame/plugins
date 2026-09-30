@@ -46,7 +46,8 @@ void main() {
   });
 
   /// An assistant answer containing [text].
-  Finder answer(String text) => find.byWidgetPredicate((w) => w is SelectableText && (w.data ?? '').contains(text), skipOffstage: false);
+  Finder answer(String text) =>
+      find.byWidgetPredicate((w) => w is SelectableText && (w.data ?? w.textSpan?.toPlainText() ?? '').contains(text), skipOffstage: false);
 
   Future<void> drive(WidgetTester tester, bool Function() done) async {
     for (var i = 0; i < 300 && !done(); i++) {

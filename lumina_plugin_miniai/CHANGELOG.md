@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Markdown answers.** The assistant's answers render as GitHub-flavoured Markdown: headings, bold, italic, strikethrough, inline code, fenced code blocks with a copy button and their language, bullet and numbered lists (nested), block quotes, tables, rules and links that open in the browser. Text stays selectable; a half-streamed answer renders as it comes.
 - **Claude Code's questions.** When Claude Code asks through its AskUserQuestion tool, the tool card shows the questions with their header, options and descriptions (one choice, or several where the question allows), an **Other…** answer and **Answer** / **Skip**; the answers go back to Claude Code, in every approval mode, and stay under the card. The AI button counts a waiting question.
 - **Readable tool cards.** A card's arguments and result are pretty-printed JSON with coloured keys, strings, numbers and literals (a light and a dark palette), in boxes at most 200 px tall that scroll; other text stays plain.
 - **Selection as context.** A chip above the message box shows the editor selection (level actors, Content Browser assets), live (level changes at once, the rest polled every second while the panel is open). It goes with the next message as context; ✕ drops it for that message, and Project Settings ▸ AI Assistant ▸ "Attach the editor selection to messages" turns it off.

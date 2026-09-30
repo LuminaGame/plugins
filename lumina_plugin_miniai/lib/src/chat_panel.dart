@@ -9,6 +9,7 @@ import 'context/editor_context.dart';
 import 'history_view.dart';
 import 'local/local_model_manager.dart';
 import 'local_model_section.dart';
+import 'markdown_view.dart';
 import 'miniai_controller.dart';
 import 'provider_dialog.dart';
 import 'thinking_row.dart';
@@ -875,7 +876,7 @@ class _ChatPanelState extends State<ChatPanel> {
               ),
             if (item.hasThinking && item.text.isNotEmpty) const SizedBox(height: 4),
             if (item.text.isNotEmpty)
-              SelectableText(item.text.toString().trim(), key: ValueKey('miniai_assistant_$index'), style: const TextStyle(fontSize: 11)),
+              MarkdownView(key: ValueKey('miniai_assistant_$index'), data: item.text.toString().trim()),
           ],
         ),
         NoteItem(:final text, :final isError) => Text(
