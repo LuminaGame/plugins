@@ -9,6 +9,7 @@ export 'src/agent/toolset_selector.dart';
 export 'src/llm/llm_types.dart';
 export 'src/llm/openai_compat_provider.dart';
 export 'src/agent/agent_loop.dart';
+export 'src/agent/lumina_primer.dart';
 export 'src/agent/chat.dart';
 export 'src/agent/chat_store.dart';
 export 'src/history_view.dart';

@@ -322,6 +322,8 @@ class MiniAiController extends ChangeNotifier {
       maxRounds: MiniAiProjectSettings.maxRounds(project) ?? (config.local ? 6 : 25),
       selector: ToolsetSelector(maxTools: config.local ? 12 : 40, disabledGroups: MiniAiProjectSettings.disabledToolGroups(project)),
       projectNotes: MiniAiProjectSettings.projectNotes(project),
+      // The local model's 8 K context gets the short primer.
+      compactPrimer: config.local,
     );
     final before = chat.items.length;
     chat

@@ -2,6 +2,7 @@ import 'package:lumina_editor_api/lumina_editor_api.dart';
 
 import '../llm/llm_types.dart';
 import 'approval.dart';
+import 'lumina_primer.dart';
 
 /// Picks the few tool groups a request needs: a small model
 /// cannot use 100+ tools, so it gets the groups its words point at, plus
@@ -177,15 +178,19 @@ class ToolsetSelector {
   }
 
   /// The tools to offer for [message] in [gate]'s mode, as [LlmToolSpec]s:
-  /// the groups' tools first (read-only before changes, so a truncated list
+  /// the engine guide (`get_lumina_guide`) always first, then the groups' tools (read-only before changes, so a truncated list
   /// keeps the ones that look before they act… and the mutating ones the
   /// request asked for), then `core`, capped at [maxTools].
   List<McpTool> select(List<McpTool> all, String message, ApprovalGate gate) {
     final groups = groupsFor(message);
     final offered = [for (final t in all) if (gate.decide(t) != ApprovalDecision.hidden && _allowed(t)) t];
-    final inGroups = [for (final t in offered) if (t.groups.intersection(groups).isNotEmpty) t];
-    final core = [for (final t in offered) if (t.groups.contains(McpToolGroups.core) && !inGroups.contains(t)) t];
-    return [..._byScore(inGroups, message), ...core].take(maxTools).toList();
+    final guide = [for (final t in offered) if (t.name == LuminaPrimer.guideTool) t];
+    final inGroups = [for (final t in offered) if (t.groups.intersection(groups).isNotEmpty && !guide.contains(t)) t];
+    final core = [
+      for (final t in offered)
+        if (t.groups.contains(McpToolGroups.core) && !inGroups.contains(t) && !guide.contains(t)) t,
+    ];
+    return [...guide, ..._byScore(inGroups, message), ...core].take(maxTools).toList();
   }
 
   /// The tools of [message]'s groups that [gate]'s mode hides (Plan mode's

@@ -145,6 +145,32 @@ void main() {
     expect(chat.turns.last.planBlocked, isEmpty, reason: 'a question, no change asked for');
   });
 
+  test('the engine primer and get_lumina_guide reach the model; a guide text is not cut at the result budget', () async {
+    mcp.registerTool(McpTool(
+      name: LuminaPrimer.guideTool,
+      description: 'How the Lumina engine works: the overview, or one topic.',
+      inputSchema: McpSchema.object({'topic': McpSchema.string('A topic id.')}),
+      handler: (_) => McpToolResult.text('guide'),
+      risk: McpToolRisk.readOnly,
+      groups: {McpToolGroups.core},
+    ));
+    server.queue.addAll(['tool_call', 'tool_result_answer']);
+    final chat = Chat(id: 'g1');
+    await loop().run(chat, 'How many actors are in the level? Use the tool.');
+    final first = server.requests.first;
+    final system = ((first['messages'] as List).first as Map)['content'] as String;
+    expect(system, contains(LuminaPrimer.full));
+    final offered = [for (final t in first['tools'] as List) ((t as Map)['function'] as Map)['name']];
+    expect(offered.first, LuminaPrimer.guideTool, reason: 'always offered, ahead of the cap');
+
+    final long = 'x' * 9000;
+    final l = loop();
+    expect(l.cutResult(LuminaPrimer.guideTool, long), long, reason: 'the guide text reaches the model whole');
+    expect(l.cutResult('probe.count', long), startsWith('x' * l.resultBudget));
+    expect(l.cutResult('probe.count', long), contains('more characters cut'));
+    expect(l.cutResult(LuminaPrimer.guideTool, 'y' * 20000).length, lessThan(20000), reason: 'bounded by its own budget');
+  });
+
   test('the round limit stops the turn with a note', () async {
     server.queue.addAll(['tool_call', 'tool_call']);
     final chat = Chat(id: 'c5');
