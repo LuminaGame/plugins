@@ -14,6 +14,8 @@ import 'agent/toolset_selector.dart';
 import 'claude_code/claude_code_agent.dart';
 import 'claude_code/claude_code_cli.dart';
 import 'claude_code/claude_code_protocol.dart';
+import 'context/editor_context.dart';
+import 'context/selection_watcher.dart';
 import 'llm/llm_types.dart';
 import 'local/local_model_manager.dart';
 import 'settings/miniai_project_settings.dart';
@@ -53,7 +55,30 @@ class MiniAiController extends ChangeNotifier {
       starter: claudeStarter,
       cli: claudeCli ?? ClaudeCodeCli(environmentOverride: environment),
     );
+    selection = SelectionWatcher(mcp, level: level?.changes);
+    mentions = MentionIndex(mcp);
     _bindChat(Chat(id: _newId(), mode: _defaultMode()));
+  }
+
+  /// The editor selection (the chip above the message box).
+  late final SelectionWatcher selection;
+
+  /// The project's content and actors for `@` mentions.
+  late final MentionIndex mentions;
+
+  /// The project attaches the editor selection to messages.
+  bool get attachSelection => MiniAiProjectSettings.attachSelection(_projectSettings());
+
+  /// What [text] carries: the selection (unless dropped or turned off) and
+  /// the [picked] mentions still in the text. A slash command carries
+  /// nothing.
+  MessageContext contextFor(String text, List<MentionCandidate> picked) {
+    if (text.startsWith('/')) return const MessageContext();
+    final present = <MentionCandidate>[];
+    for (final m in picked) {
+      if (text.contains('@${m.name}') && !present.contains(m)) present.add(m);
+    }
+    return MessageContext(selection: attachSelection ? selection.attachable : null, mentions: present);
   }
 
   /// The project folder (Claude Code runs there).
@@ -264,11 +289,13 @@ class MiniAiController extends ChangeNotifier {
 
   /// Sends [text] as a new turn; ignored while a turn runs or without a
   /// provider.
-  Future<void> send(String text) async {
+  Future<void> send(String text, {List<MentionCandidate> mentions = const [], MessageContext? context}) async {
     final config = settings.selected;
     if (text.trim().isEmpty || running || config == null || !config.isUsable) return;
     lastTurnFailed = false;
-    if (config.isClaudeCode) return _sendClaude(config, text.trim());
+    final ctx = context ?? contextFor(text.trim(), mentions);
+    selection.sent();
+    if (config.isClaudeCode) return _sendClaude(config, text.trim(), ctx);
     if (needsLocalStart) {
       // Autostart: the server's port changes per start, so the provider is
       // re-read once it is ready.
@@ -282,7 +309,7 @@ class MiniAiController extends ChangeNotifier {
       await settings.save(
         ProviderConfig(id: localProviderId, name: 'Local (${local.variant.label})', baseUrl: local.baseUrl!, model: local.variant.id, local: true),
       );
-      return send(text);
+      return send(text, context: ctx);
     }
     final cancel = _cancel = CancelToken();
     final project = _projectSettings();
@@ -301,7 +328,7 @@ class MiniAiController extends ChangeNotifier {
       ..provider = config.id
       ..model = config.model;
     final turn = chat;
-    await loop.run(turn, text.trim(), cancel: cancel);
+    await loop.run(turn, text.trim(), cancel: cancel, context: ctx);
     // Did the turn leave a level undo step?
     if (turn.turns.isNotEmpty) turn.turns.last.sceneStep = level != null && level!.undoTopLabel == turn.turns.last.label;
     lastTurnFailed = turn.items.skip(before).any((i) => i is NoteItem && i.isError);
@@ -311,7 +338,7 @@ class MiniAiController extends ChangeNotifier {
     if (identical(turn, chat)) await saveChat();
   }
 
-  Future<void> _sendClaude(ProviderConfig config, String text) async {
+  Future<void> _sendClaude(ProviderConfig config, String text, MessageContext context) async {
     final cancel = _cancel = CancelToken();
     final before = chat.items.length;
     chat
@@ -319,7 +346,7 @@ class MiniAiController extends ChangeNotifier {
       ..model = config.model.isEmpty ? null : config.model;
     final turn = chat;
     claudeError = null;
-    await claude.run(turn, text, model: config.model.isEmpty ? null : config.model, command: config.command, cancel: cancel);
+    await claude.run(turn, text, model: config.model.isEmpty ? null : config.model, command: config.command, cancel: cancel, context: context);
     if (turn.turns.isNotEmpty) turn.turns.last.sceneStep = level != null && level!.undoTopLabel == turn.turns.last.label;
     lastTurnFailed = turn.items.skip(before).any((i) => i is NoteItem && i.isError);
     _cancel = null;
@@ -470,6 +497,7 @@ class MiniAiController extends ChangeNotifier {
   @override
   void dispose() {
     stop();
+    selection.dispose();
     unawaited(claude.close());
     settings.removeListener(notifyListeners);
     local.removeListener(_localChanged);

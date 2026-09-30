@@ -10,6 +10,7 @@ import 'package:lumina_plugin_miniai/lumina_plugin_miniai.dart';
 
 import 'support/local_mcp.dart';
 import 'support/replay_claude.dart';
+import 'support/temp_project.dart';
 
 McpTool _tool(String name, McpToolRisk risk, {Set<String> groups = const {McpToolGroups.level}}) => McpTool(
       name: name,
@@ -195,6 +196,24 @@ void main() {
     expect(replay.starts, hasLength(2));
     expect(replay.starts.last, containsAllInOrder(['--resume', session]));
     expect(answers(c), contains('1'));
+  });
+
+  test('the selection and the mentions go to Claude Code in the context block', () async {
+    final project = TempProject(Directory('${temp.path}/project'));
+    project.register(mcp);
+    project.selectedActors.add('actor_wall');
+    final (c, replay) = await make(['turns_and_tools'], mode: ApprovalMode.plan);
+    addTearDown(c.dispose);
+    await c.selection.refresh();
+    const sun = MentionCandidate(kind: MentionKind.actor, name: 'Sun', id: 'actor_light', type: 'DirectionalLight');
+    await c.send('Call the list_actors tool of the lumina MCP server once, then reply with the number of actors only. @Sun', mentions: const [sun]);
+    final message = (replay.inputs(0).firstWhere((i) => i['type'] == 'user')['message'] as Map)['content'] as String;
+    final block = message.substring(0, message.indexOf('</editor_context>'));
+    expect(block, contains('You are in Plan mode'));
+    expect(block, contains('"id":"actor_wall"'));
+    expect(block, contains('{"kind":"actor","name":"Sun","id":"actor_light","type":"DirectionalLight"}'));
+    expect(c.chat.items.whereType<UserItem>().first.context, 'Context: Divider_Wall · Primitive, @Sun');
+    await c.claude.close();
   });
 
   test('resume after a restart: the stored session id, then a model change', () async {

@@ -11,6 +11,7 @@ import '../llm/llm_types.dart';
 import 'claude_code_cli.dart';
 import 'claude_code_protocol.dart';
 import 'claude_code_session.dart';
+import '../context/editor_context.dart';
 import '../agent/toolset_selector.dart';
 
 /// MiniAI's tool that answers Claude Code's permission requests, as the
@@ -185,7 +186,7 @@ class ClaudeCodeAgent {
   }
 
   /// Runs [userText] as one turn of [chat] on Claude Code.
-  Future<void> run(Chat chat, String userText, {String? model, String? command, CancelToken? cancel, String? context}) async {
+  Future<void> run(Chat chat, String userText, {String? model, String? command, CancelToken? cancel, MessageContext? context}) async {
     final token = cancel ?? CancelToken();
     if (chat.history.isEmpty) chat.history.add(LlmMessage.system(AgentLoop.systemPrompt()));
     final label = 'AI: ${AgentLoop.titleOf(userText)}';
@@ -194,13 +195,13 @@ class ClaudeCodeAgent {
       turn.undoUnavailable = "This editor cannot tie Claude Code's tool calls to a turn; use Edit ▸ Undo instead.";
     }
     chat.turns.add(turn);
-    chat.items.add(UserItem(userText));
+    chat.items.add(UserItem(userText, context: context?.displayLine));
     chat.history.add(LlmMessage.user(userText));
     if (chat.title == Chat.defaultTitle) chat.title = AgentLoop.titleOf(userText);
     chat.running = true;
     chat.changed();
     try {
-      Future<void> body() => mcp.attributeExternalCalls(callerTag(chat.id), turn.caller, () => _stream(chat, turn, messageFor(chat, userText, context: context), token, model, command));
+      Future<void> body() => mcp.attributeExternalCalls(callerTag(chat.id), turn.caller, () => _stream(chat, turn, messageFor(chat, userText, context: context?.json), token, model, command));
       final tx = transaction;
       if (tx != null) {
         await tx(label, body);

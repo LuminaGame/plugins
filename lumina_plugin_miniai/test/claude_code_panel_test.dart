@@ -68,9 +68,16 @@ void main() {
     expect(find.byKey(const ValueKey('miniai_claude_state')), findsOneWidget);
     expect(find.text('Claude Code · default model'), findsOneWidget);
 
+    // `@` works next to `/`: in a command line it opens the mention list.
+    await tester.enterText(find.byKey(const ValueKey('miniai_message')), '/compact keep @');
+    await tester.pump();
+    expect(find.byKey(const ValueKey('miniai_mention_menu')), findsOneWidget);
+    expect(find.byKey(const ValueKey('miniai_slash_menu')), findsNothing);
+
     await tester.enterText(find.byKey(const ValueKey('miniai_message')), '/');
     await tester.pump();
     expect(find.byKey(const ValueKey('miniai_slash_menu')), findsOneWidget);
+    expect(find.byKey(const ValueKey('miniai_mention_menu')), findsNothing);
     await drive(tester, () => find.byKey(const ValueKey('miniai_slash_hello')).evaluate().isNotEmpty);
     expect(find.text('Say hello from a custom project command (project)'), findsOneWidget);
     expect(controller.claudeCommands.map((c) => c.name), containsAll(['compact', 'context']));

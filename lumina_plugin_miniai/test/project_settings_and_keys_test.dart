@@ -167,13 +167,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('miniai_settings_mode_acceptEdits')));
     await tester.pumpAndSettle();
+    expect(MiniAiProjectSettings.attachSelection(handle.values), isTrue, reason: 'on by default');
+    await tester.tap(find.byKey(const ValueKey('miniai_settings_attach_selection')));
+    await tester.pump();
     expect(handle.values, {
       'disabledToolGroups': ['pie'],
       'maxRounds': 3,
       'projectNotes': 'Answer in one word.',
       'provider': 'cloud',
       'defaultMode': 'acceptEdits',
+      'attachSelection': false,
     });
+    expect(MiniAiProjectSettings.attachSelection(handle.values), isFalse);
   });
 
   testWidgets('API Keys lists a stored key masked and removes it', (tester) async {

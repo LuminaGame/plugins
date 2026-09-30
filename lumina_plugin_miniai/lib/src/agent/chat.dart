@@ -15,8 +15,12 @@ sealed class ChatItem {
 }
 
 class UserItem extends ChatItem {
-  UserItem(this.text);
+  UserItem(this.text, {this.context});
   final String text;
+
+  /// What went with it besides the text (`Context: Divider_Wall · Primitive,
+  /// @fuel_barrel_red`); the model got the full block.
+  final String? context;
 }
 
 class AssistantItem extends ChatItem {
@@ -320,7 +324,7 @@ class Chat extends ChangeNotifier {
   }
 
   static Map<String, Object?> _itemJson(ChatItem i) => switch (i) {
-        UserItem() => {'kind': 'user', 'text': i.text},
+        UserItem() => {'kind': 'user', 'text': i.text, 'context': ?i.context},
         AssistantItem() => {
             'kind': 'assistant',
             'text': i.text.toString(),
@@ -344,7 +348,7 @@ class Chat extends ChangeNotifier {
   static ChatItem _itemFrom(Map<String, Object?> j, Map<String, ChatImage> images) {
     switch (j['kind']) {
       case 'user':
-        return UserItem('${j['text']}');
+        return UserItem('${j['text']}', context: j['context'] as String?);
       case 'assistant':
         return AssistantItem()
           ..text.write(j['text'] ?? '')

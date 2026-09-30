@@ -16,6 +16,7 @@ class MiniAiProjectSettings {
   static const String disabledToolGroupsKey = 'disabledToolGroups';
   static const String maxRoundsKey = 'maxRounds';
   static const String projectNotesKey = 'projectNotes';
+  static const String attachSelectionKey = 'attachSelection';
 
   /// The groups a project can switch off (`core` never).
   static const List<String> toggleableGroups = [
@@ -52,6 +53,9 @@ class MiniAiProjectSettings {
     return n != null && n >= 1 ? n : null;
   }
 
+  /// Whether messages carry the editor selection (on unless turned off).
+  static bool attachSelection(Map<String, Object?> values) => values[attachSelectionKey] != false;
+
   static String? projectNotes(Map<String, Object?> values) {
     final v = values[projectNotesKey];
     if (v is! String || v.trim().isEmpty) return null;
@@ -63,7 +67,7 @@ class MiniAiProjectSettings {
         id: 'miniai',
         title: 'AI Assistant',
         icon: LucideIcons.sparkles,
-        keywords: const ['ai', 'assistant', 'miniai', 'approval', 'mode', 'chat', 'provider', 'tool groups', 'rounds', 'notes'],
+        keywords: const ['ai', 'assistant', 'miniai', 'approval', 'mode', 'chat', 'provider', 'tool groups', 'rounds', 'notes', 'selection', 'context'],
         builder: (context, settings) => MiniAiSettingsPage(settings: settings, providers: providers?.call() ?? const []),
       );
 }
@@ -201,6 +205,16 @@ class _MiniAiSettingsPageState extends State<MiniAiSettingsPage> {
                 ],
               ),
               help: 'In every mode. The core tools (listing, help) always stay.',
+            ),
+            _row(
+              'Editor selection',
+              Checkbox(
+                key: const ValueKey('miniai_settings_attach_selection'),
+                state: MiniAiProjectSettings.attachSelection(values) ? CheckboxState.checked : CheckboxState.unchecked,
+                onChanged: (s) => settings.set(MiniAiProjectSettings.attachSelectionKey, s == CheckboxState.checked ? null : false),
+                trailing: const Text('Attach the editor selection to messages', style: TextStyle(fontSize: 11)),
+              ),
+              help: 'The selected actors and assets go with each message as context; the chip above the message box can drop them for one message.',
             ),
             _row(
               'Max tool rounds per turn',

@@ -7,6 +7,7 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'agent/approval.dart';
 import 'agent/chat.dart';
 import 'claude_code/claude_code_protocol.dart';
+import 'context/editor_context.dart';
 import 'history_view.dart';
 import 'local/local_model_manager.dart';
 import 'local_model_section.dart';
@@ -43,6 +44,15 @@ class _ChatPanelState extends State<ChatPanel> {
   /// Escape closed the list until the text changes.
   String? _slashDismissed;
 
+  /// The highlighted row of the `@` list.
+  int _mentionIndex = 0;
+
+  /// Escape closed the `@` list until the text changes.
+  String? _mentionDismissed;
+
+  /// The mentions picked from the `@` list for the message being typed.
+  final List<MentionCandidate> _picked = [];
+
   MiniAiController get c => widget.controller;
 
   @override
@@ -50,6 +60,9 @@ class _ChatPanelState extends State<ChatPanel> {
     super.initState();
     c.addListener(_changed);
     c.mcp.toolsChanged.addListener(_changed);
+    c.selection
+      ..addListener(_selectionChanged)
+      ..watch();
     _message.addListener(_messageChanged);
     _titleFocus.addListener(() {
       if (!_titleFocus.hasFocus && _editingTitle) _saveTitle();
@@ -140,8 +153,14 @@ class _ChatPanelState extends State<ChatPanel> {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller.removeListener(_changed);
       oldWidget.controller.mcp.toolsChanged.removeListener(_changed);
+      oldWidget.controller.selection
+        ..removeListener(_selectionChanged)
+        ..unwatch();
       c.addListener(_changed);
       c.mcp.toolsChanged.addListener(_changed);
+      c.selection
+        ..addListener(_selectionChanged)
+        ..watch();
     }
   }
 
@@ -149,6 +168,9 @@ class _ChatPanelState extends State<ChatPanel> {
   void dispose() {
     c.removeListener(_changed);
     c.mcp.toolsChanged.removeListener(_changed);
+    c.selection
+      ..removeListener(_selectionChanged)
+      ..unwatch();
     _message.removeListener(_messageChanged);
     _message.dispose();
     _scroll.dispose();
@@ -165,11 +187,46 @@ class _ChatPanelState extends State<ChatPanel> {
     });
   }
 
+  /// The selection chip changed; the conversation keeps its scroll.
+  void _selectionChanged() {
+    if (mounted) setState(() {});
+  }
+
   void _send() {
     final text = _message.text;
     if (text.trim().isEmpty || c.running || !c.settings.isConfigured) return;
+    final mentions = List.of(_picked);
+    _picked.clear();
     _message.clear();
-    c.send(text);
+    c.send(text, mentions: mentions);
+  }
+
+  /// The `@…` being typed before the cursor, or null.
+  String? get _mentionQuery {
+    final value = _message.value;
+    if (value.text == _mentionDismissed) return null;
+    final end = value.selection.isValid ? value.selection.baseOffset : value.text.length;
+    if (end < 0 || end > value.text.length) return null;
+    return RegExp(r'(?:^|\s)@([^\s@]*)$').firstMatch(value.text.substring(0, end))?.group(1);
+  }
+
+  List<MentionCandidate> get _mentionMatches {
+    final q = _mentionQuery;
+    return q == null ? const [] : c.mentions.search(q);
+  }
+
+  /// Replaces the `@…` before the cursor with `@<name> ` and remembers the
+  /// reference.
+  void _pickMention(MentionCandidate m) {
+    final value = _message.value;
+    final end = value.selection.isValid ? value.selection.baseOffset : value.text.length;
+    final before = value.text.substring(0, end);
+    final at = before.lastIndexOf('@');
+    if (at < 0) return;
+    final inserted = '@${m.name} ';
+    final text = value.text.replaceRange(at, end, inserted);
+    if (!_picked.contains(m)) _picked.add(m);
+    _message.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: at + inserted.length));
   }
 
   /// The `/…` being typed (Claude Code only), or null.
@@ -190,6 +247,14 @@ class _ChatPanelState extends State<ChatPanel> {
 
   void _messageChanged() {
     if (_slashDismissed != null && _message.text != _slashDismissed) _slashDismissed = null;
+    if (_mentionDismissed != null && _message.text != _mentionDismissed) _mentionDismissed = null;
+    if (_mentionQuery != null) {
+      // The first `@` (or a stale list): read the project's content and actors.
+      c.mentions.load().then((_) {
+        if (mounted) setState(() {});
+      });
+    }
+    _mentionIndex = 0;
     if (_slashQuery != null && c.claudeCommands.isEmpty && c.claudeError == null) {
       // The first `/`: start the chat's Claude Code process to learn its
       // commands (no model call).
@@ -357,7 +422,8 @@ class _ChatPanelState extends State<ChatPanel> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_slashQuery != null) _slashMenu(context),
+              if (_mentionQuery != null) _mentionMenu(context) else if (_slashQuery != null) _slashMenu(context),
+              _selectionChip(context),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -365,6 +431,24 @@ class _ChatPanelState extends State<ChatPanel> {
                     child: Focus(
                       onKeyEvent: (_, event) {
                         if (event is! KeyDownEvent) return KeyEventResult.ignored;
+                        if (_mentionQuery != null) {
+                          final key = event.logicalKey;
+                          final found = _mentionMatches;
+                          if (key == LogicalKeyboardKey.escape) {
+                            setState(() => _mentionDismissed = _message.text);
+                            return KeyEventResult.handled;
+                          }
+                          if (found.isNotEmpty) {
+                            if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.arrowUp) {
+                              setState(() => _mentionIndex = (_mentionIndex + (key == LogicalKeyboardKey.arrowDown ? 1 : -1)) % found.length);
+                              return KeyEventResult.handled;
+                            }
+                            if (key == LogicalKeyboardKey.tab || (key == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed)) {
+                              _pickMention(found[_mentionIndex.clamp(0, found.length - 1)]);
+                              return KeyEventResult.handled;
+                            }
+                          }
+                        }
                         final matches = _slashMatches;
                         if (matches.isNotEmpty) {
                           final key = event.logicalKey;
@@ -471,6 +555,127 @@ class _ChatPanelState extends State<ChatPanel> {
             child: const Text('Use Auto'),
           ),
         ],
+      ),
+    );
+  }
+
+  static IconData _mentionIcon(MentionCandidate m) => switch (m.kind) {
+        MentionKind.folder => LucideIcons.folder,
+        MentionKind.actor => LucideIcons.shapes,
+        MentionKind.asset => switch (m.type) {
+            'filamesh' || 'staticMesh' || 'skeletalMesh' => LucideIcons.box,
+            'texture' => LucideIcons.image,
+            'filamat' || 'material' || 'materialInstance' => LucideIcons.palette,
+            'actor' || 'blueprint' => LucideIcons.puzzle,
+            'level' => LucideIcons.map,
+            'sound' || 'audio' => LucideIcons.audioLines,
+            'animation' || 'animSequence' => LucideIcons.film,
+            'skeleton' => LucideIcons.bone,
+            _ => LucideIcons.file,
+          },
+      };
+
+  /// The project's assets, folders and actors matching the `@…` typed so
+  /// far; a click (or Enter / Tab) inserts one.
+  Widget _mentionMenu(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.mutedForeground;
+    final matches = _mentionMatches;
+    final Widget body;
+    if (matches.isEmpty) {
+      body = Padding(
+        padding: const EdgeInsets.all(8),
+        child: Text(
+          c.mentions.candidates.isEmpty ? 'Reading the project…' : 'No asset, folder or actor matches.',
+          style: TextStyle(fontSize: 10, color: muted),
+        ),
+      );
+    } else {
+      body = ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        children: [
+          for (var i = 0; i < matches.length; i++)
+            GestureDetector(
+              key: ValueKey('miniai_mention_${matches[i].kind.name}_$i'),
+              onTap: () => _pickMention(matches[i]),
+              child: Container(
+                color: i == _mentionIndex ? theme.colorScheme.accent : null,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(_mentionIcon(matches[i]), size: 12, color: muted),
+                    const SizedBox(width: 6),
+                    Text(matches[i].name, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        [
+                          if (matches[i].type != null) matches[i].type!,
+                          matches[i].path ?? (matches[i].kind == MentionKind.actor ? 'actor in the level' : ''),
+                        ].where((s) => s.isNotEmpty).join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10, color: muted),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      );
+    }
+    return Container(
+      key: const ValueKey('miniai_mention_menu'),
+      margin: const EdgeInsets.only(bottom: 6),
+      constraints: const BoxConstraints(maxHeight: 220),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.popover,
+        border: Border.all(color: theme.colorScheme.border),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: body,
+    );
+  }
+
+  /// The editor selection that goes with the next message; ✕ drops it for
+  /// that message.
+  Widget _selectionChip(BuildContext context) {
+    final selection = c.selection.attachable;
+    final label = selection?.label;
+    if (label == null || !c.attachSelection) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        key: const ValueKey('miniai_selection_chip'),
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.fromLTRB(8, 2, 2, 2),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.muted,
+          border: Border.all(color: theme.colorScheme.border),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.mousePointerClick, size: 11, color: theme.colorScheme.mutedForeground),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Tooltip(
+                tooltip: (_) => const TooltipContainer(child: Text('Your editor selection goes with the next message as context')),
+                child: Text(label, key: const ValueKey('miniai_selection_label'), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10)),
+              ),
+            ),
+            IconButton.ghost(
+              key: const ValueKey('miniai_selection_remove'),
+              density: ButtonDensity.iconDense,
+              icon: const Icon(LucideIcons.x, size: 10),
+              onPressed: c.selection.dismiss,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -628,12 +833,29 @@ class _ChatPanelState extends State<ChatPanel> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: switch (item) {
-        UserItem(:final text) => Align(
+        UserItem(:final text, context: final attached) => Align(
           alignment: Alignment.centerRight,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-            decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-            child: Text(text, style: const TextStyle(fontSize: 11)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
+                child: Text(text, style: const TextStyle(fontSize: 11)),
+              ),
+              if (attached != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  child: Text(
+                    attached,
+                    key: ValueKey('miniai_user_context_$index'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 9, color: theme.colorScheme.mutedForeground),
+                  ),
+                ),
+            ],
           ),
         ),
         // The reasoning as one collapsible row, then the answer. Before the
