@@ -96,6 +96,15 @@ void main() {
     final inputs = replay.inputs(0);
     expect(inputs.first['type'], 'control_request', reason: 'initialize first');
     expect(inputs.where((i) => i['type'] == 'user'), hasLength(2));
+    // Every message states the chat's mode; a Plan refusal is recorded for
+    // the panel's "Switch to Ask" chip.
+    final firstMessage = (inputs.firstWhere((i) => i['type'] == 'user')['message'] as Map)['content'] as String;
+    expect(firstMessage, startsWith('<editor_context>\nYou are in Plan mode: you can read and look around but cannot change the project.'));
+    expect(firstMessage, endsWith('</editor_context>\n\nCall the list_actors tool of the lumina MCP server once, then reply with the number of actors only.'));
+    expect(c.chat.items.whereType<UserItem>().first.text, startsWith('Call the list_actors'), reason: 'the chat shows the user text only');
+    expect(c.chat.turns.first.planBlocked, isEmpty);
+    expect(c.chat.turns.last.planBlocked, ['spawn_actor']);
+    expect(replay.starts.single.join(' '), contains('<editor_context>'), reason: 'the appended system prompt explains the block');
     final data = c.chat.providerData['claude_code'] as Map;
     expect(data['sessionId'], hasLength(36));
     expect(data['costUsd'], greaterThan(0));

@@ -336,7 +336,7 @@ class _ChatPanelState extends State<ChatPanel> {
                       _item(context, chat, chat.items[i], i),
                       // "Undo this turn" under a turn's last item.
                       for (final t in chat.turns)
-                        if (_turnEnd(chat, t) == i) _turnFooter(context, t),
+                        if (_turnEnd(chat, t) == i) ...[_turnFooter(context, t), _planHint(context, t)],
                     ],
                   ],
                 ),
@@ -554,6 +554,49 @@ class _ChatPanelState extends State<ChatPanel> {
     final at = chat.turns.indexOf(turn);
     final next = at + 1 < chat.turns.length ? chat.turns[at + 1].userItemIndex : chat.items.length;
     return next - 1;
+  }
+
+  /// Under the newest Plan-mode turn that needed hidden tools: a one-click
+  /// switch to Ask.
+  Widget _planHint(BuildContext context, TurnRecord turn) {
+    final chat = c.chat;
+    if (turn.planBlocked.isEmpty || c.mode != ApprovalMode.plan || c.running || !identical(turn, chat.turns.lastOrNull)) {
+      return const SizedBox.shrink();
+    }
+    final theme = Theme.of(context);
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        key: ValueKey('miniai_plan_hint_${turn.id}'),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(8, 4, 4, 4),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.primary.withValues(alpha: 0.08),
+          border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(LucideIcons.lightbulb, size: 12, color: theme.colorScheme.primary),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Tooltip(
+                tooltip: (_) => TooltipContainer(child: Text('Plan mode hides: ${turn.planBlocked.join(', ')}')),
+                child: const Text('Switch to Ask to let MiniAI make these changes', style: TextStyle(fontSize: 10)),
+              ),
+            ),
+            const SizedBox(width: 6),
+            PrimaryButton(
+              key: const ValueKey('miniai_plan_switch'),
+              density: ButtonDensity.compact,
+              onPressed: () => c.mode = ApprovalMode.ask,
+              child: const Text('Switch to Ask', style: TextStyle(fontSize: 10)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _turnFooter(BuildContext context, TurnRecord turn) {

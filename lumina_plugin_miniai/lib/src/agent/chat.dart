@@ -91,7 +91,8 @@ class TurnRecord {
     this.undone = false,
     this.untracked = 0,
     this.undoUnavailable,
-  });
+    List<String>? planBlocked,
+  }) : planBlocked = planBlocked ?? [];
 
   /// `<chatId>:<n>`; the tool caller is `miniai:<id>`.
   final String id;
@@ -117,6 +118,10 @@ class TurnRecord {
   /// attribute an external agent's calls to it); null when it can.
   String? undoUnavailable;
 
+  /// In Plan mode: the tools the turn needed that the mode hides (the
+  /// panel offers to switch to Ask).
+  final List<String> planBlocked;
+
   String get caller => 'miniai:$id';
 
   Map<String, Object?> toJson() => {
@@ -128,6 +133,7 @@ class TurnRecord {
         if (undone) 'undone': true,
         if (untracked > 0) 'untracked': untracked,
         'undoUnavailable': ?undoUnavailable,
+        if (planBlocked.isNotEmpty) 'planBlocked': planBlocked,
       };
 
   factory TurnRecord.fromJson(Map<String, Object?> j) => TurnRecord(
@@ -139,6 +145,7 @@ class TurnRecord {
         undone: j['undone'] == true,
         untracked: j['untracked'] as int? ?? 0,
         undoUnavailable: j['undoUnavailable'] as String?,
+        planBlocked: [for (final t in (j['planBlocked'] as List? ?? const [])) '$t'],
       );
 }
 

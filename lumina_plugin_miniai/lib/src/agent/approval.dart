@@ -18,6 +18,16 @@ enum ApprovalMode {
   const ApprovalMode(this.label, this.help);
   final String label;
   final String help;
+
+  /// What the model is told about this mode.
+  String get prompt => switch (this) {
+        plan => 'You are in Plan mode: you can read and look around but cannot change the project. '
+            'Propose a plan; the user can switch to Ask or Auto to execute it.',
+        ask => "You are in Ask mode: you may change the project. Changes wait for the user's approval.",
+        acceptEdits => 'You are in Accept edits mode: undoable edits run at once; deleting or reaching outside the project '
+            "waits for the user's approval.",
+        auto => 'You are in Auto mode: every tool runs without asking.',
+      };
 }
 
 /// What the gate says about one tool in one mode.

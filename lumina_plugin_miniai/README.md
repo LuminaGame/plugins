@@ -17,7 +17,8 @@ An AI assistant inside Lumina Studio. You chat with a local or cloud model, and 
   | Accept edits | makes undoable edits; asks before deleting or reaching outside |
   | Auto | runs every tool without asking |
 
-  Approval cards offer **Allow**, **Always allow in this chat** and **Deny**; **Stop** cancels a turn.
+  Approval cards offer **Allow**, **Always allow in this chat** and **Deny**; **Stop** cancels a turn. The model is told its mode every turn (Claude Code in each message). In Plan mode it proposes a plan and names the tools it would use; when a Plan turn needed changes, a chip under it offers **Switch to Ask** in one click.
+- **Tool selection**: a small model gets only the tool groups its request points at, from English, Turkish, Spanish, German and French words ("sahneye küp ekle", "oyunu oynat ve test et", "ekran görüntüsü al"); a request that matches none gets the level, asset and view tools.
 - **Tool cards**: each tool call shows its name, risk, status, arguments and result. A result with images (`viewport_screenshot`, `pie_advance`, `pie_play_for`, `asset_editor_screenshot`) shows small thumbnails; click one to see it full size.
 - **Thinking**: when the model reasons before it answers (llama.cpp's `reasoning_content`, a `reasoning` field, inline `<think>` tags, Claude Code's thinking blocks), the answer gets one collapsed row: **Thinking…** with animated dots while it thinks, **Thought for N s** after. Click it to read the reasoning as it streams, in a box at most 100 px high that follows the text unless you scroll up. Claude Code does not share its reasoning text by default; its row says so.
 - **Undo**: one assistant turn is one Edit → Undo step. **Undo this turn** under a turn takes back its level changes (while it is the newest undo step) and restores the files its file tools changed.

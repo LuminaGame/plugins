@@ -118,6 +118,33 @@ void main() {
     expect(mcp.recorded, isEmpty);
   });
 
+  test('plan mode: the model is told its mode and the tools a plan would use; the turn records them', () async {
+    server.queue.addAll(['two_tool_calls', 'text']);
+    final chat = Chat(id: 'p1', mode: ApprovalMode.plan);
+    await loop().run(chat, 'Place the barrel twice');
+    final system = ((server.requests.first['messages'] as List).first as Map)['content'] as String;
+    expect(system, contains('You are in Plan mode: you can read and look around but cannot change the project. '
+        'Propose a plan; the user can switch to Ask or Auto to execute it.'));
+    expect(system, contains('spawn_actor_from_asset'));
+    expect(chat.turns.single.planBlocked, ['spawn_actor_from_asset']);
+    expect(Chat.fromJson(chat.toJson()).turns.single.planBlocked, ['spawn_actor_from_asset'], reason: 'saved with the chat');
+  });
+
+  test('ask mode: the prompt says so, nothing is Plan-blocked, and a mode change rewrites the prompt', () async {
+    server.queue.addAll(['tool_call', 'tool_result_answer', 'text']);
+    final chat = Chat(id: 'p2');
+    await loop().run(chat, 'How many actors are in the level? Use the tool.');
+    final first = ((server.requests.first['messages'] as List).first as Map)['content'] as String;
+    expect(first, contains("You are in Ask mode: you may change the project. Changes wait for the user's approval."));
+    expect(first, isNot(contains('Plan mode')));
+    expect(chat.turns.single.planBlocked, isEmpty);
+    chat.gate.mode = ApprovalMode.plan;
+    await loop().run(chat, 'What is in the level?');
+    final third = ((server.requests.last['messages'] as List).first as Map)['content'] as String;
+    expect(third, contains('You are in Plan mode'));
+    expect(chat.turns.last.planBlocked, isEmpty, reason: 'a question, no change asked for');
+  });
+
   test('the round limit stops the turn with a note', () async {
     server.queue.addAll(['tool_call', 'tool_call']);
     final chat = Chat(id: 'c5');

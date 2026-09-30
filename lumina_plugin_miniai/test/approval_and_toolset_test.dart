@@ -54,7 +54,49 @@ void main() {
     test('the groups follow the words; level when nothing matches', () {
       expect(selector.groupsFor('Place three barrels in the level'), {McpToolGroups.level});
       expect(selector.groupsFor('Add a node to the Blueprint graph'), {McpToolGroups.blueprint});
-      expect(selector.groupsFor('hello there'), {McpToolGroups.level});
+      expect(selector.groupsFor('hello there'), {McpToolGroups.level, McpToolGroups.asset, McpToolGroups.view},
+          reason: 'nothing matches: the core working set, not level alone');
+    });
+
+    test('Turkish requests find their groups (stems, Turkish case folding)', () {
+      expect(selector.groupsFor('Oyunu oynat ve test et'), contains(McpToolGroups.pie));
+      expect(selector.groupsFor('Sahneye üç varil yerleştir'), contains(McpToolGroups.level));
+      expect(selector.groupsFor('ekran görüntüsü al'), contains(McpToolGroups.view));
+      expect(selector.groupsFor('Malzemenin rengini kırmızı yap'), contains(McpToolGroups.material));
+      expect(selector.groupsFor('IŞIK ekle'), contains(McpToolGroups.level));
+      expect(selector.groupsFor('İçeriği listele'), contains(McpToolGroups.asset));
+      expect(selector.groupsFor('Hata günlüğünü göster'), contains(McpToolGroups.log));
+      expect(selector.groupsFor("bu blueprint'e bir değişken ekle"), containsAll([McpToolGroups.blueprint, McpToolGroups.level]));
+      expect(selector.groupsFor('oyunu çalıştır ve dene'), {McpToolGroups.pie});
+    });
+
+    test('Spanish, German and French requests too', () {
+      expect(selector.groupsFor('añadir un cubo a la escena'), contains(McpToolGroups.level));
+      expect(selector.groupsFor('Spiel starten'), contains(McpToolGroups.pie));
+      expect(selector.groupsFor('ajouter une lumière à la scène'), contains(McpToolGroups.level));
+    });
+
+    test('the fallback leaves out a disabled group', () {
+      const noView = ToolsetSelector(disabledGroups: {McpToolGroups.view});
+      expect(noView.groupsFor('merhaba'), {McpToolGroups.level, McpToolGroups.asset});
+    });
+
+    test('Turkish verbs point at tool names: "ekle" puts spawn first', () {
+      final picked = selector.select([
+        _tool('list_actors', McpToolRisk.readOnly, {McpToolGroups.level}),
+        _tool('spawn_actor', McpToolRisk.mutating, {McpToolGroups.level}),
+      ], 'Sahneye küp ekle', ApprovalGate()).map((t) => t.name).toList();
+      expect(picked, ['spawn_actor', 'list_actors']);
+    });
+
+    test('change requests, and the tools Plan mode hides for a request', () {
+      expect(ToolsetSelector.asksForChanges('Sahneye küp ekle'), isTrue);
+      expect(ToolsetSelector.asksForChanges('Place three barrels'), isTrue);
+      expect(ToolsetSelector.asksForChanges('How many actors are there?'), isFalse);
+      expect(ToolsetSelector.asksForChanges('Sahnede kaç aktör var?'), isFalse);
+      final hidden = selector.hiddenFor(tools, 'Place three barrels in the level', ApprovalGate(mode: ApprovalMode.plan)).map((t) => t.name);
+      expect(hidden, ['spawn_actor_from_asset']);
+      expect(selector.hiddenFor(tools, 'Place three barrels in the level', ApprovalGate()), isEmpty);
     });
 
     test('the request\'s groups first, then core, capped; plan drops the changes', () {
