@@ -127,6 +127,18 @@ Future<void> main(List<String> args) async {
         _Send(user('Reply with OK.'), wait: true),
       ]);
     },
+    // Claude Code asks the user a multiple-choice question (AskUserQuestion,
+    // through the permission prompt); the answer goes back in the input.
+    'ask_user_question': () async {
+      await recorder.record(File('${out.path}/ask_user_question.jsonl'), ['--model', model], [
+        _Send(initialize),
+        _Send(
+          user('Use the AskUserQuestion tool exactly once to ask me which colour I prefer, with the options Red and Blue. '
+              'Then reply with only the colour I chose.'),
+          wait: true,
+        ),
+      ]);
+    },
     // Stop while the answer streams.
     'interrupt': () async {
       await recorder.record(File('${out.path}/interrupt.jsonl'), ['--model', model], [
@@ -182,8 +194,22 @@ class _Recorder {
       final request = Map<String, Object?>.from(jsonDecode(line) as Map);
       final tool = '${request['tool_name']}';
       final readOnly = RegExp(r'(^|__)(list_|get_|project_info)').hasMatch(tool) || const {'ToolSearch', 'Read', 'Glob', 'Grep'}.contains(tool);
-      final answer = readOnly
-          ? {'behavior': 'allow', 'updatedInput': request['input']}
+      final input = request['input'];
+      final answer = tool == 'AskUserQuestion' && input is Map
+          // The user picks each question's second option (as MiniAI's
+          // question card answers: `{question: label}`).
+          ? {
+              'behavior': 'allow',
+              'updatedInput': {
+                ...input,
+                'answers': {
+                  for (final q in (input['questions'] as List? ?? const []))
+                    if (q is Map) '${q['question']}': '${((q['options'] as List)[1] as Map)['label']}',
+                },
+              },
+            }
+          : readOnly
+          ? {'behavior': 'allow', 'updatedInput': input}
           : {'behavior': 'deny', 'message': 'The user denied $tool.'};
       _write({'permission': request, 'answer': answer});
       socket.writeln(jsonEncode(answer));
@@ -317,7 +343,9 @@ class _Recorder {
 
   late final List<(String, String)> _pathReplacements = () {
     final home = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'] ?? '';
-    final projectPath = Directory(project).absolute.path;
+    // Windows paths the way the CLI writes them, however --project was given.
+    var projectPath = Directory(project).absolute.path;
+    if (Platform.isWindows) projectPath = projectPath.replaceAll('/', r'\');
     final pairs = <(String, String)>[];
     for (final (path, placeholder) in [(projectPath, '<project>'), (home, '<home>')]) {
       if (path.isEmpty) continue;

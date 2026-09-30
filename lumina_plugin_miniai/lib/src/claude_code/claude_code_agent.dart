@@ -36,6 +36,7 @@ abstract final class ClaudeCodePermissions {
     'TodoWrite': McpToolRisk.readOnly,
     'NotebookRead': McpToolRisk.readOnly,
     'ListMcpResourcesTool': McpToolRisk.readOnly,
+    'AskUserQuestion': McpToolRisk.readOnly,
     'ReadMcpResourceTool': McpToolRisk.readOnly,
     'ReadMcpResourceDirTool': McpToolRisk.readOnly,
     'Edit': McpToolRisk.mutating,
@@ -46,6 +47,10 @@ abstract final class ClaudeCodePermissions {
 
   /// Claude Code tools that change files outside the editor's undo.
   static const Set<String> untrackedEdits = {'Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'Bash', 'PowerShell'};
+
+  /// The tool Claude Code asks the user multiple-choice questions with;
+  /// MiniAI answers it from the chat, whatever the mode.
+  static const String askUserQuestion = 'AskUserQuestion';
 
   /// Tools shown as no card (Claude Code's own bookkeeping).
   static const Set<String> hidden = {'ToolSearch', 'TodoWrite'};
@@ -457,6 +462,7 @@ class _Turn {
     }
 
     if (stopped) return deny('The user stopped the turn.');
+    if (name == ClaudeCodePermissions.askUserQuestion) return _ask(id, name, input, deny);
     switch (chat.gate.decideRisk(agent.displayName(name), risk)) {
       case ApprovalDecision.allow:
         return allow();
@@ -479,11 +485,34 @@ class _Turn {
     }
   }
 
+  /// Shows AskUserQuestion's questions on its card and waits for the user:
+  /// the answers go back as `updatedInput.answers` (`{question: label}`,
+  /// several labels joined by ", "), which the CLI hands the model.
+  Future<Map<String, Object?>> _ask(String id, String name, Map<String, Object?> input, Map<String, Object?> Function(String) deny) async {
+    final item = _card(id, name, input);
+    item.status = ToolCallStatus.waitingAnswer;
+    final pending = item.question = Completer<Map<String, String>?>();
+    chat.changed();
+    final answers = await pending.future;
+    item.question = null;
+    if (answers == null) return deny(stopped ? 'The user stopped the turn.' : 'The user skipped the questions; continue with your own judgement or ask in text.');
+    item.answers = answers;
+    item.status = ToolCallStatus.running;
+    _clocks[id] = Stopwatch()..start();
+    chat.changed();
+    return {
+      'behavior': 'allow',
+      'updatedInput': {...input, 'answers': answers},
+    };
+  }
+
   /// Denies every card still waiting (Stop).
   void denyPending(String reason) {
     for (final item in _calls.values) {
       final pending = item.approval;
       if (pending != null && !pending.isCompleted) pending.complete(ApprovalAnswer.deny(reason));
+      final question = item.question;
+      if (question != null && !question.isCompleted) question.complete(null);
     }
   }
 
@@ -492,7 +521,7 @@ class _Turn {
     _endThinking();
     denyPending('the turn ended');
     for (final item in _calls.values) {
-      if (item.status == ToolCallStatus.running || item.status == ToolCallStatus.waitingApproval) {
+      if (item.status == ToolCallStatus.running || item.status == ToolCallStatus.waitingApproval || item.status == ToolCallStatus.waitingAnswer) {
         item.status = ToolCallStatus.failed;
         if (item.result.isEmpty) item.result = stopped ? 'Stopped.' : 'No result.';
       }

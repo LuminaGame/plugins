@@ -7,7 +7,7 @@ import 'package:lumina_editor_api/lumina_editor_api.dart';
 import '../llm/llm_types.dart';
 import 'approval.dart';
 
-enum ToolCallStatus { waitingApproval, running, done, failed, denied }
+enum ToolCallStatus { waitingApproval, waitingAnswer, running, done, failed, denied }
 
 /// One thing shown in the conversation.
 sealed class ChatItem {
@@ -75,6 +75,41 @@ class ToolCallItem extends ChatItem {
 
   /// Set while [status] is [ToolCallStatus.waitingApproval].
   Completer<ApprovalAnswer>? approval;
+
+  /// Set while [status] is [ToolCallStatus.waitingAnswer]: the model asked
+  /// the user (Claude Code's AskUserQuestion); completes with the answers by
+  /// question, or null when the user skipped.
+  Completer<Map<String, String>?>? question;
+
+  /// The user's answers to the questions, by question.
+  Map<String, String>? answers;
+}
+
+/// One question of Claude Code's AskUserQuestion tool.
+class UserQuestion {
+  const UserQuestion({required this.question, required this.header, required this.options, this.multiSelect = false});
+
+  final String question;
+
+  /// A short label (a chip).
+  final String header;
+  final List<({String label, String description})> options;
+  final bool multiSelect;
+
+  /// The questions of an AskUserQuestion input (`{questions: [...]}`).
+  static List<UserQuestion> listFrom(Object? input) => [
+        for (final q in (input is Map ? input['questions'] as List? ?? const [] : const []))
+          if (q is Map && q['question'] is String)
+            UserQuestion(
+              question: q['question'] as String,
+              header: '${q['header'] ?? ''}',
+              multiSelect: q['multiSelect'] == true,
+              options: [
+                for (final o in (q['options'] as List? ?? const []))
+                  if (o is Map) (label: '${o['label'] ?? ''}', description: '${o['description'] ?? ''}'),
+              ],
+            ),
+      ];
 }
 
 /// A note from MiniAI itself: stopped, a provider error, the round limit.
@@ -204,7 +239,18 @@ class Chat extends ChangeNotifier {
   List<ToolCallItem> get pendingApprovals =>
       [for (final i in items) if (i is ToolCallItem && i.status == ToolCallStatus.waitingApproval) i];
 
+  /// The questions waiting for the user's answer.
+  List<ToolCallItem> get pendingQuestions =>
+      [for (final i in items) if (i is ToolCallItem && i.status == ToolCallStatus.waitingAnswer) i];
+
   void changed() => notifyListeners();
+
+  /// Answers [item]'s questions ([answers] by question; null skips them).
+  void answerQuestions(ToolCallItem item, Map<String, String>? answers) {
+    final pending = item.question;
+    if (pending == null || pending.isCompleted) return;
+    pending.complete(answers);
+  }
 
   /// Answers [item]'s approval card.
   void answer(ToolCallItem item, ApprovalAnswer answer) {
@@ -341,6 +387,7 @@ class Chat extends ChangeNotifier {
             'result': i.result,
             if (i.elapsed != null) 'ms': i.elapsed!.inMilliseconds,
             if (i.images.isNotEmpty) 'images': [for (final image in i.images) image.id],
+            'answers': ?i.answers,
           },
         NoteItem() => {'kind': 'note', 'text': i.text, if (i.isError) 'isError': true},
       };
@@ -360,7 +407,7 @@ class Chat extends ChangeNotifier {
         var status = ToolCallStatus.values.where((s) => s.name == j['status']).firstOrNull ?? ToolCallStatus.failed;
         var result = '${j['result'] ?? ''}';
         // A card the editor closed on never finished.
-        if (status == ToolCallStatus.waitingApproval || status == ToolCallStatus.running) {
+        if (status == ToolCallStatus.waitingApproval || status == ToolCallStatus.waitingAnswer || status == ToolCallStatus.running) {
           status = ToolCallStatus.failed;
           result = result.isEmpty ? 'Interrupted: the chat was closed before this call finished.' : result;
         }
@@ -368,7 +415,8 @@ class Chat extends ChangeNotifier {
           ..status = status
           ..result = result
           ..elapsed = j['ms'] is int ? Duration(milliseconds: j['ms'] as int) : null
-          ..images = _imagesFrom(j['images'], images);
+          ..images = _imagesFrom(j['images'], images)
+          ..answers = j['answers'] is Map ? {for (final e in (j['answers'] as Map).entries) '${e.key}': '${e.value}'} : null;
         return item;
       case 'note':
         return NoteItem('${j['text']}', isError: j['isError'] == true);

@@ -27,7 +27,8 @@ class MiniAiButtonState {
   void _update() {
     final c = controller;
     final configured = c?.settings.isConfigured ?? false;
-    final pending = c?.chat.pendingApprovals.length ?? 0;
+    final questions = c?.chat.pendingQuestions.length ?? 0;
+    final pending = (c?.chat.pendingApprovals.length ?? 0) + questions;
     final local = c?.local;
     final crashed = local?.status == LocalModelStatus.crashed;
     final tone = crashed
@@ -47,6 +48,8 @@ class MiniAiButtonState {
           ? 'AI Assistant (MiniAI) — Starting the local model'
           : !configured
           ? 'AI Assistant (MiniAI) — No model provider is set up yet'
+          : questions > 0
+          ? 'AI Assistant (MiniAI) — The assistant is asking you a question'
           : pending > 0
           ? 'AI Assistant (MiniAI) — $pending tool call${pending == 1 ? '' : 's'} waiting for your approval'
           : 'AI Assistant (MiniAI) — ${c!.settings.selected!.label}',

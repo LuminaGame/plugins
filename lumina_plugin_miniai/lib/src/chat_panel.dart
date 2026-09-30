@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/services.dart' show LogicalKeyboardKey, HardwareKeyboard, KeyDownEvent;
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
@@ -14,6 +12,7 @@ import 'local_model_section.dart';
 import 'miniai_controller.dart';
 import 'provider_dialog.dart';
 import 'thinking_row.dart';
+import 'tool_card_parts.dart';
 import 'tool_images.dart';
 
 /// The AI Assistant panel, right-docked as `miniai.chat`: the
@@ -910,29 +909,24 @@ class _ToolCallCardState extends State<_ToolCallCard> {
     super.dispose();
   }
 
-  String _pretty(String json) {
-    try {
-      return const JsonEncoder.withIndent('  ').convert(jsonDecode(json));
-    } catch (_) {
-      return json;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
     final theme = Theme.of(context);
     final (icon, color, label) = switch (item.status) {
       ToolCallStatus.waitingApproval => (LucideIcons.shieldQuestion, theme.colorScheme.primary, 'waiting for approval'),
+      ToolCallStatus.waitingAnswer => (LucideIcons.messageCircleQuestion, theme.colorScheme.primary, 'waiting for your answer'),
       ToolCallStatus.running => (LucideIcons.loader, theme.colorScheme.mutedForeground, 'running'),
       ToolCallStatus.done => (LucideIcons.check, const Color(0xFF58A547), item.elapsed == null ? 'done' : '${item.elapsed!.inMilliseconds} ms'),
       ToolCallStatus.failed => (LucideIcons.x, theme.colorScheme.destructive, 'failed'),
       ToolCallStatus.denied => (LucideIcons.ban, theme.colorScheme.mutedForeground, 'denied'),
     };
     final waiting = item.status == ToolCallStatus.waitingApproval;
+    final asking = item.status == ToolCallStatus.waitingAnswer;
+    final questions = asking ? UserQuestion.listFrom(JsonSpans.tryParse(item.call.argumentsJson)?.$1) : const <UserQuestion>[];
     return Container(
       decoration: BoxDecoration(
-        border: Border.all(color: waiting ? theme.colorScheme.primary : theme.colorScheme.border),
+        border: Border.all(color: waiting || asking ? theme.colorScheme.primary : theme.colorScheme.border),
         borderRadius: BorderRadius.circular(6),
       ),
       padding: const EdgeInsets.all(8),
@@ -962,15 +956,26 @@ class _ToolCallCardState extends State<_ToolCallCard> {
             const SizedBox(height: 6),
             ToolImageThumbnails(callId: item.call.id, images: item.images),
           ],
-          if (_open || waiting) ...[
+          if (asking && questions.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            QuestionForm(key: ValueKey('miniai_questions_${item.call.id}'), chat: widget.chat, item: item, questions: questions),
+          ],
+          if (!asking && item.answers != null) QuestionAnswers(key: ValueKey('miniai_answers_${item.call.id}'), answers: item.answers!),
+          if (_open || waiting || (asking && questions.isEmpty)) ...[
             const SizedBox(height: 6),
-            Text(_pretty(item.call.argumentsJson), style: const TextStyle(fontSize: 10, fontFamily: 'monospace')),
+            ToolPayloadView(key: ValueKey('miniai_tool_args_${item.call.id}'), text: item.call.argumentsJson),
           ],
           if (_open && item.result.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(
-              item.result.length > 1500 ? '${item.result.substring(0, 1500)}…' : item.result,
-              style: TextStyle(fontSize: 10, fontFamily: 'monospace', color: theme.colorScheme.mutedForeground),
+            ToolPayloadView(key: ValueKey('miniai_tool_result_${item.call.id}'), text: item.result, muted: true),
+          ],
+          if (asking && questions.isEmpty) ...[
+            const SizedBox(height: 8),
+            OutlineButton(
+              key: ValueKey('miniai_question_skip_${item.call.id}'),
+              density: ButtonDensity.compact,
+              onPressed: () => widget.chat.answerQuestions(item, null),
+              child: const Text('Skip', style: TextStyle(fontSize: 10)),
             ),
           ],
           if (waiting) ...[
