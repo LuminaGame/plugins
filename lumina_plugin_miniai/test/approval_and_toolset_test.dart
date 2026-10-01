@@ -132,6 +132,55 @@ void main() {
           isNot(contains(LuminaPrimer.guideTool)), reason: 'an editor without the tool changes nothing');
     });
 
+    // The phrasing of a real chat where a model without the input tools
+    // looped on get_selection.
+    final settingsTools = [
+      _tool('get_selection', McpToolRisk.readOnly, {McpToolGroups.level, McpToolGroups.asset}),
+      _tool('list_actors', McpToolRisk.readOnly, {McpToolGroups.level}),
+      _tool('get_project_settings', McpToolRisk.readOnly, {McpToolGroups.settings}),
+      _tool('edit_project_input', McpToolRisk.mutating, {McpToolGroups.settings}),
+      _tool('apply_project_settings', McpToolRisk.mutating, {McpToolGroups.settings}),
+      _tool('set_project_icon', McpToolRisk.mutating, {McpToolGroups.settings}),
+      _tool('add_blueprint_node', McpToolRisk.mutating, {McpToolGroups.blueprint}),
+      _tool('add_component', McpToolRisk.mutating, {McpToolGroups.component}),
+      _tool('start_pie', McpToolRisk.editorState, {McpToolGroups.pie}),
+      _tool('project_info', McpToolRisk.readOnly, {McpToolGroups.core}),
+    ];
+
+    test('input / keys / controls / settings requests get the Project Settings tools, input first', () {
+      for (final request in [
+        'Input ayarlarını kontrol ediyorum',
+        'Input ayarlarını düzenliyorum',
+        'tuşları ayarla',
+        'change the input keys',
+        'edit the controls',
+        'Tasten einstellen',
+        'cambiar las teclas',
+      ]) {
+        expect(selector.groupsFor(request), contains(McpToolGroups.settings), reason: request);
+      }
+      const wide = ToolsetSelector(maxTools: 5);
+      final picked = wide.select(settingsTools, 'Input ayarlarını düzenle', ApprovalGate(mode: ApprovalMode.auto)).map((t) => t.name).toList();
+      expect(picked.take(3), containsAll(['edit_project_input', 'get_project_settings', 'apply_project_settings']));
+    });
+
+    test('game-building requests get level, Blueprint, component, settings and Play; "run the game" stays Play', () {
+      const game = {McpToolGroups.level, McpToolGroups.blueprint, McpToolGroups.component, McpToolGroups.settings, McpToolGroups.pie};
+      expect(selector.groupsFor('Bir endless runner oyunu oluştur'), containsAll(game));
+      expect(selector.groupsFor('build an endless runner game with a character'), containsAll(game));
+      expect(selector.groupsFor('karakter zıplasın'), containsAll(game));
+      expect(selector.groupsFor('oyunu çalıştır ve dene'), {McpToolGroups.pie});
+    });
+
+    test('a follow-up without keywords keeps the conversation\'s toolset', () {
+      const earlier = ['Bir endless runner oyunu oluştur'];
+      expect(selector.groupsFor('basla'), ToolsetSelector.fallbackGroups.toSet(), reason: 'alone: the fallback');
+      expect(selector.groupsFor('basla', earlier: earlier), selector.groupsFor(earlier.single));
+      const wide = ToolsetSelector(maxTools: 12);
+      final picked = wide.select(settingsTools, 'basla', ApprovalGate(mode: ApprovalMode.auto), earlier: earlier).map((t) => t.name);
+      expect(picked, containsAll(['edit_project_input', 'add_blueprint_node', 'add_component', 'start_pie']));
+    });
+
     test('a tool becomes an LlmToolSpec with its schema unchanged and a short description', () {
       final spec = const ToolsetSelector().specOf(tools[1]);
       expect(spec.name, 'spawn_actor_from_asset');

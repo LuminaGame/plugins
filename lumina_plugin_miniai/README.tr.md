@@ -53,6 +53,27 @@ Local model yerine bir isim, `/v1` ile biten bir base URL (örneğin kendi llama
 
 **Model accepts images**, editor tool'larının döndürdüğü ekran görüntülerine ne olacağını belirler. Açıkken en yeni ikisi modele görüntü olarak gider (tool sonuçlarından sonra bir user mesajında: chat completions API'si tool mesajlarında görüntüye izin vermez); daha eskileri ve görüntü okuyamayan bir model için her görüntü `[image/png 1280×720, 245 KB produced by the tool; not shown to the model]` gibi kısa bir nota dönüşür. Bilinen vision modellerinde (GPT-4o/4.1/5, Claude, Gemini, Llava, Qwen-VL, MiniCPM-V, Pixtral, Gemma 3, …) varsayılan olarak açık, diğerlerinde (paketle gelen MiniCPM5 dahil) kapalıdır; işaretleyerek ya da kaldırarak değiştirebilirsiniz. Bir chat en yeni 12 görüntüsünün piksellerini saklar.
 
+### Sampling ve tekrar
+
+**Advanced / Sampling** (kapalı gelir; endpoint formunun altında ve Local model kartında) provider'ın her isteğinin taşıdığı değerleri ayarlar: temperature, top P, top K, min P, repeat penalty ve penceresi, presence ve frequency penalty, DRY (multiplier, base, allowed length), max output tokens ve seed. Boş alanlar gönderilmez, server'ın kendi varsayılanları geçerli olur; **Reset to defaults** modelin önerilen değerlerine döner. Ayarlar provider ile birlikte `providers.json`'a kaydedilir (key asla).
+
+**Server tipi** bir isteğin hangi alanları taşıyabileceğini belirler; böylece hiçbir server reddettiği bir alan almaz. **Test connection** onu bulur (Unsloth Studio'nun `server` header'ı, llama-server'ın `/props`'u, Ollama'nın `/api/version`'ı, LM Studio'nun `/api/v0/models`'ı, vLLM'in `/version`'ı; api.openai.com ve openrouter.ai host'tan) ve değiştirebilirsiniz:
+
+| Server | Temperature, top P, presence / frequency penalty, max tokens, seed dışında gönderilen |
+|---|---|
+| llama-server (llama.cpp) | `top_k`, `min_p`, `repeat_penalty`, `repeat_last_n`, `dry_multiplier`, `dry_base`, `dry_allowed_length` |
+| Unsloth Studio, vLLM, OpenRouter | `top_k`, `min_p`, `repetition_penalty` |
+| LM Studio | `top_k`, `repeat_penalty` |
+| Ollama, diğer server'lar | başka bir şey yok |
+| OpenAI | `max_tokens` yerine `max_completion_tokens`; reasoning modelleri (o1, o3, o4, gpt-5) temperature, top P ya da penalty almaz |
+
+Varsayılanlar model üreticilerinin önerilerini izler ve tekrara karşı seçilmiştir: Ornith-1.0 ve diğer Qwen3 / Qwen3.5 thinking modelleri 0.6 / 0.95 / top K 20 / min P 0 ile presence penalty 1.5 (Qwen: presence penalty bitmeyen tekrarı keser); Qwen instruct modelleri 0.7 / 0.8 / 20 ile presence penalty 1.5; MiniCPM5 1.0 / 0.95 / min P 0 ile repeat penalty 1.05; Gemma 1.0 / 0.95 / top K 64; Llama 0.6 / 0.9; Mistral 0.15; local bir server'da bilinmeyen bir model 0.7 / 0.95 / 40 / 0.05 ile repeat penalty 1.05; OpenAI ve OpenRouter modelleri provider'ın varsayılanlarını korur.
+
+Bir model yine de kendini tekrarlarsa MiniAI onu durdurur:
+
+- aynı bloğu (500 karakter üzerinde 5 kez ya da 16 kez) veya aynı uzun satırı (son 60 satırın 10'u) tekrarlayan bir cevap ya da reasoning durdurulur; bir kopyası kalır ve bir not daha düşük temperature ya da daha yüksek repeat penalty önerir;
+- aynı argümanlarla aynı sonucu üçüncü kez alan bir tool call'a (bu turda ve bir öncekinde) sonucun değişmeyeceğini söyleyen bir not eklenir; aynı turda bir kez daha gelirse tur biter. Başka argümanlı ya da sonucu değişen çağrılar (polling) sayılmaz.
+
 ### Claude Code
 
 [Claude Code](https://claude.com/claude-code) kurulu ve giriş yapılmışsa MiniAI onu model olarak çalıştırabilir. Provider dialog'undaki **Claude Code** bölümü bulduğu `claude`'u (`PATH`'te, native installer'ın klasörlerinde, npm'in global klasöründe ya da VS Code extension'ında; veya sizin yazdığınız bir path), versiyonunu ve giriş yapılıp yapılmadığını gösterir; aksi halde kurulum ve giriş ipuçları verir. Bir model seçin (CLI'ın listesi ya da varsayılanı) ve **Use Claude Code**'a tıklayın. MiniAI bunun için asla key istemez ya da saklamaz: CLI sizin kendi Claude Code girişinizle çalışır.

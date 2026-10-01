@@ -53,6 +53,27 @@ Instead of the local model, enter a name, a base URL ending in `/v1` (for exampl
 
 **Model accepts images** decides what happens to screenshots the editor tools return. On, the newest two go to the model as images (after the tool results, in a user message: the chat completions API allows no images in tool messages); older ones and every image for a model without vision become a short note such as `[image/png 1280×720, 245 KB produced by the tool; not shown to the model]`. It is on by default for known vision models (GPT-4o/4.1/5, Claude, Gemini, Llava, Qwen-VL, MiniCPM-V, Pixtral, Gemma 3, …) and off otherwise, the bundled MiniCPM5 included; tick or untick it to override. A chat keeps the pixels of its newest 12 images.
 
+### Sampling and repetition
+
+**Advanced / Sampling** (collapsed, under the endpoint form and on the Local model card) sets what every request of the provider carries: temperature, top P, top K, min P, repeat penalty and its window, presence and frequency penalty, DRY (multiplier, base, allowed length), max output tokens and seed. Empty fields are not sent, so the server's own defaults apply; **Reset to defaults** goes back to the model's recommended values. The settings are saved with the provider in `providers.json` (never the key).
+
+The **server type** decides which fields a request may carry, so no server gets a field it rejects. **Test connection** finds it (an Unsloth Studio `server` header, llama-server's `/props`, Ollama's `/api/version`, LM Studio's `/api/v0/models`, vLLM's `/version`; api.openai.com and openrouter.ai by host), and you can change it:
+
+| Server | Sent besides temperature, top P, presence / frequency penalty, max tokens, seed |
+|---|---|
+| llama-server (llama.cpp) | `top_k`, `min_p`, `repeat_penalty`, `repeat_last_n`, `dry_multiplier`, `dry_base`, `dry_allowed_length` |
+| Unsloth Studio, vLLM, OpenRouter | `top_k`, `min_p`, `repetition_penalty` |
+| LM Studio | `top_k`, `repeat_penalty` |
+| Ollama, other servers | nothing more |
+| OpenAI | `max_completion_tokens` instead of `max_tokens`; reasoning models (o1, o3, o4, gpt-5) get no temperature, top P or penalties |
+
+The defaults follow the model vendors' recommendations, chosen against repetition: Ornith-1.0 and other Qwen3 / Qwen3.5 thinking models 0.6 / 0.95 / top K 20 / min P 0 with presence penalty 1.5 (Qwen: presence penalty curbs endless repetition); Qwen instruct models 0.7 / 0.8 / 20 with presence penalty 1.5; MiniCPM5 1.0 / 0.95 / min P 0 with repeat penalty 1.05; Gemma 1.0 / 0.95 / top K 64; Llama 0.6 / 0.9; Mistral 0.15; an unknown model on a local server 0.7 / 0.95 / 40 / 0.05 with repeat penalty 1.05; OpenAI and OpenRouter models keep the provider's defaults.
+
+When a model still repeats itself, MiniAI stops it:
+
+- an answer or its reasoning that repeats the same block (5 times over 500 characters, or 16 times) or the same long line (10 of the last 60 lines) is stopped; one copy stays and a note suggests a lower temperature or a higher repeat penalty;
+- a tool call with the same arguments and the same result a third time (this turn and the previous one) gets a note telling the model the result will not change; one more in the same turn ends the turn. Calls with other arguments or a changed result (polling) do not count.
+
 ### Claude Code
 
 If you have [Claude Code](https://claude.com/claude-code) installed and logged in, MiniAI can run it as its model. The **Claude Code** section of the provider dialog shows the `claude` it found (on `PATH`, in the native installer's folders, npm's global folder or the VS Code extension; or a path you type), its version and whether it is logged in, with install and login hints otherwise. Pick a model (the CLI's list, or its default) and click **Use Claude Code**. MiniAI never asks for or stores a key for it: the CLI runs on your own Claude Code login.

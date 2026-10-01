@@ -72,11 +72,35 @@ class ToolsetSelector {
       'kamera*', 'ekran görüntü*', 'görüntü*', 'bak*', 'görünüm*', 'odakla*', //
       'cámara*', 'captura*', 'vista*', 'mira*', 'bildschirmfoto*', 'ansicht*', 'schau*', 'caméra*', 'capture*', 'vue', 'regarde*',
     ],
+    McpToolGroups.settings: [
+      'input', 'inputs', 'key', 'keys', 'keybinding', 'keybindings', 'control', 'controls', 'settings', 'project settings', //
+      'gamepad', 'keyboard', 'key binding', 'key bindings',
+      'input*', 'girdi*', 'tuş*', 'kontrol*', 'ayar*', 'klavye*', 'kumanda*', //
+      'entrada*', 'tecla*', 'controles', 'ajuste*', 'configuración', //
+      'eingabe*', 'taste*', 'tasten*', 'steuerung*', 'einstellung*', //
+      'touche*', 'commande*', 'paramètre*', 'réglage*',
+    ],
     McpToolGroups.log: [
       'log', 'error', 'errors', 'warning', 'output',
       'günlü*', 'hata*', 'uyarı*', 'çıktı*', 'registro*', 'error*', 'advertencia*', 'fehler*', 'warnung*', 'protokoll*', //
       'erreur*', 'journal*', 'avertissement*',
     ],
+  };
+
+  /// Words of a game-building request: it needs the level, Blueprints,
+  /// components, the project's input settings and Play.
+  static const List<String> _gameKeywords = [
+    'endless runner', 'runner', 'platformer', 'shooter', 'character', 'player', 'gameplay', //
+    'karakter*', 'oyuncu*', 'personaje*', 'jugador*', 'spieler*', 'spielfigur*', 'personnage*', 'joueur*',
+  ];
+
+  /// "Game": a game-building request only with a change word ("build a
+  /// game", "oyun oluştur"); "run the game" stays Play.
+  static const List<String> _gameWords = ['game', 'games', 'oyun*', 'juego*', 'spiel', 'spiele', 'jeu', 'jeux'];
+
+  /// The groups a game-building request gets.
+  static const Set<String> gameGroups = {
+    McpToolGroups.level, McpToolGroups.blueprint, McpToolGroups.component, McpToolGroups.settings, McpToolGroups.pie, //
   };
 
   /// Request words → the words host tool names use; `*` keys are stems.
@@ -115,6 +139,16 @@ class ToolsetSelector {
     'listele*': ['list'],
     'kaç': ['list', 'count'],
     'göster*': ['list', 'get'],
+    'input': ['input', 'project'],
+    'inputs': ['input', 'project'],
+    'key': ['input'],
+    'keys': ['input'],
+    'controls': ['input'],
+    'settings': ['settings', 'project'],
+    'input*': ['input', 'project'],
+    'tuş*': ['input', 'project'],
+    'kontrol*': ['input', 'project'],
+    'ayar*': ['settings', 'project'],
   };
 
   /// Words that ask for a change to the project.
@@ -139,14 +173,23 @@ class ToolsetSelector {
 
   static bool _matches(String folded, List<String> keywords) => keywords.any((k) => _pattern(k).hasMatch(folded));
 
-  /// The groups [message] needs; [fallbackGroups] when nothing matches.
-  Set<String> groupsFor(String message) {
+  /// The groups [message]'s words point at (none for a message without
+  /// keywords).
+  Set<String> _matchedGroups(String message) {
     final text = fold(message);
-    final groups = <String>{};
-    for (final e in _keywords.entries) {
-      if (disabledGroups.contains(e.key)) continue;
-      if (_matches(text, e.value)) groups.add(e.key);
-    }
+    final groups = <String>{
+      for (final e in _keywords.entries)
+        if (_matches(text, e.value)) e.key,
+      if (_matches(text, _gameKeywords) || (_matches(text, _gameWords) && _matches(text, _changeWords))) ...gameGroups,
+    };
+    return groups.difference(disabledGroups);
+  }
+
+  /// The groups [message] needs, with those of the [earlier] messages of
+  /// the conversation (a follow-up like "go on" keeps them);
+  /// [fallbackGroups] when nothing matches.
+  Set<String> groupsFor(String message, {List<String> earlier = const []}) {
+    final groups = {..._matchedGroups(message), for (final e in earlier) ..._matchedGroups(e)};
     if (groups.isEmpty) groups.addAll(fallbackGroups.where((g) => !disabledGroups.contains(g)));
     return groups;
   }
@@ -181,8 +224,8 @@ class ToolsetSelector {
   /// the engine guide (`get_lumina_guide`) always first, then the groups' tools (read-only before changes, so a truncated list
   /// keeps the ones that look before they act… and the mutating ones the
   /// request asked for), then `core`, capped at [maxTools].
-  List<McpTool> select(List<McpTool> all, String message, ApprovalGate gate) {
-    final groups = groupsFor(message);
+  List<McpTool> select(List<McpTool> all, String message, ApprovalGate gate, {List<String> earlier = const []}) {
+    final groups = groupsFor(message, earlier: earlier);
     final offered = [for (final t in all) if (gate.decide(t) != ApprovalDecision.hidden && _allowed(t)) t];
     final guide = [for (final t in offered) if (t.name == LuminaPrimer.guideTool) t];
     final inGroups = [for (final t in offered) if (t.groups.intersection(groups).isNotEmpty && !guide.contains(t)) t];
@@ -190,13 +233,13 @@ class ToolsetSelector {
       for (final t in offered)
         if (t.groups.contains(McpToolGroups.core) && !inGroups.contains(t) && !guide.contains(t)) t,
     ];
-    return [...guide, ..._byScore(inGroups, message), ...core].take(maxTools).toList();
+    return [...guide, ..._byScore(inGroups, [...earlier, message].join('\n')), ...core].take(maxTools).toList();
   }
 
   /// The tools of [message]'s groups that [gate]'s mode hides (Plan mode's
   /// changes), best matches first.
-  List<McpTool> hiddenFor(List<McpTool> all, String message, ApprovalGate gate) {
-    final groups = groupsFor(message);
+  List<McpTool> hiddenFor(List<McpTool> all, String message, ApprovalGate gate, {List<String> earlier = const []}) {
+    final groups = groupsFor(message, earlier: earlier);
     return _byScore([
       for (final t in all)
         if (gate.decide(t) == ApprovalDecision.hidden && _allowed(t) && t.groups.intersection(groups).isNotEmpty) t,

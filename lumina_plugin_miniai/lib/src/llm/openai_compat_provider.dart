@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'llm_types.dart';
+import 'sampling.dart';
 
 /// Any `/v1/chat/completions` server: a local `llama-server`
 /// with MiniCPM5, Ollama, LM Studio, vLLM, OpenRouter, OpenAI.
@@ -15,6 +16,8 @@ class OpenAiCompatProvider implements LlmProvider {
     this.extraHeaders = const {},
     this.capabilities = const LlmCapabilities(),
     this.maxImages = 2,
+    this.backend = ServerBackend.other,
+    this.sampling = const SamplingSettings(),
     http.Client Function()? client,
   })  : baseUrl = baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
         _client = client ?? http.Client.new;
@@ -26,6 +29,12 @@ class OpenAiCompatProvider implements LlmProvider {
   final String? apiKey;
   final Map<String, String> extraHeaders;
   final http.Client Function() _client;
+
+  /// The server type: which [sampling] fields the request may carry.
+  final ServerBackend backend;
+
+  /// Sent with every request, mapped to [backend]'s field names.
+  final SamplingSettings sampling;
 
   /// How many of the newest tool images a vision model gets as pixels.
   final int maxImages;
@@ -119,8 +128,11 @@ class OpenAiCompatProvider implements LlmProvider {
               'function': {'name': t.name, 'description': t.description, 'parameters': t.parameters},
             },
         ],
-      'temperature': ?request.temperature,
-      'max_tokens': ?request.maxTokens,
+      // An explicit request value wins over the provider's settings.
+      ...sampling
+          .withValue(SamplingSettings.temperature, request.temperature ?? sampling[SamplingSettings.temperature])
+          .withValue(SamplingSettings.maxTokens, request.maxTokens ?? sampling[SamplingSettings.maxTokens])
+          .toBody(backend, model: request.model),
     };
   }
 

@@ -3,8 +3,10 @@ import 'package:shadcn_flutter/shadcn_flutter.dart';
 import 'claude_code_section.dart';
 import 'llm/chat_image.dart';
 import 'llm/openai_compat_provider.dart';
+import 'llm/sampling.dart';
 import 'local_model_section.dart';
 import 'miniai_controller.dart';
+import 'sampling_section.dart';
 import 'settings/provider_settings.dart';
 
 /// Model provider…: an OpenAI-compatible endpoint — a local
@@ -43,6 +45,19 @@ class _ProviderDialogState extends State<_ProviderDialog> {
   /// "Model accepts images" as the user set it; null follows the model name.
   bool? _vision;
 
+  /// The server type: stored, found by Test connection or picked; null
+  /// guesses it from the URL.
+  ServerBackend? _backend;
+
+  /// The user picked [_backend] in this dialog: Test connection keeps it.
+  bool _backendPicked = false;
+
+  /// The sampling the user set; null follows the model's defaults.
+  SamplingSettings? _sampling;
+  bool _samplingValid = true;
+
+  ServerBackend get _effectiveBackend => _backend ?? ServerBackend.guess(_url.text.trim());
+
   @override
   void initState() {
     super.initState();
@@ -53,6 +68,8 @@ class _ProviderDialogState extends State<_ProviderDialog> {
     _url = TextEditingController(text: current?.baseUrl ?? 'http://127.0.0.1:8080/v1');
     _model = TextEditingController(text: current?.model ?? '')..addListener(_modelChanged);
     _vision = current?.vision;
+    _backend = current?.backend;
+    _sampling = current?.sampling;
   }
 
   void _modelChanged() {
@@ -67,11 +84,16 @@ class _ProviderDialogState extends State<_ProviderDialog> {
     super.dispose();
   }
 
-  OpenAiCompatProvider _provider() {
+  String? _apiKey() {
     final current = widget.settings.selected;
-    final key = _key.text.isNotEmpty ? _key.text : (current == null ? null : widget.settings.keyFor(current));
-    return OpenAiCompatProvider(name: 'test', baseUrl: _url.text.trim(), apiKey: key, client: widget.settings.httpClient);
+    return _key.text.isNotEmpty ? _key.text : (current == null ? null : widget.settings.keyFor(current));
   }
+
+  OpenAiCompatProvider _provider() =>
+      OpenAiCompatProvider(name: 'test', baseUrl: _url.text.trim(), apiKey: _apiKey(), client: widget.settings.httpClient);
+
+  Future<ServerBackend> _detect() =>
+      ServerBackendProbe.detect(_url.text.trim(), apiKey: _apiKey(), client: widget.settings.httpClient);
 
   Future<void> _test() async {
     setState(() {
@@ -80,11 +102,14 @@ class _ProviderDialogState extends State<_ProviderDialog> {
     });
     try {
       final models = await _provider().listModels();
+      final backend = _backendPicked ? _backend! : await _detect();
+      if (!mounted) return;
       setState(() {
+        _backend = backend;
         _models = models;
         _status = models.isEmpty
-            ? 'Connected; the server lists no models.'
-            : 'Connected: ${models.length} model${models.length == 1 ? '' : 's'} — ${models.take(4).join(', ')}';
+            ? 'Connected (${backend.label}); the server lists no models.'
+            : 'Connected: ${models.length} model${models.length == 1 ? '' : 's'} — ${models.take(4).join(', ')} · server: ${backend.label}';
         _statusError = false;
         if (_model.text.isEmpty && models.isNotEmpty) _model.text = models.first;
       });
@@ -105,8 +130,20 @@ class _ProviderDialogState extends State<_ProviderDialog> {
     final id =
         (selected == null || selected.id == MiniAiController.localProviderId || selected.isClaudeCode ? null : selected.id) ??
             name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    final model = _model.text.trim();
+    final sampling = _sampling;
     await widget.settings.save(
-      ProviderConfig(id: id, name: name, baseUrl: url, model: _model.text.trim(), local: ProviderConfig.isLoopback(url), vision: _vision),
+      ProviderConfig(
+        id: id,
+        name: name,
+        baseUrl: url,
+        model: model,
+        local: ProviderConfig.isLoopback(url),
+        vision: _vision,
+        backend: _backend,
+        // Equal to the defaults: keep following them.
+        sampling: sampling == null || sampling == SamplingDefaults.forModel(model, _effectiveBackend) ? null : sampling,
+      ),
       apiKey: _key.text.isEmpty ? null : _key.text,
     );
     widget.close();
@@ -213,6 +250,25 @@ class _ProviderDialogState extends State<_ProviderDialog> {
               ),
               help: 'Kept in MiniAI\'s own credentials file, never in the project or the log.',
             ),
+            Builder(builder: (context) {
+              final backend = _effectiveBackend;
+              final (defaults, source) = SamplingDefaults.withSource(_model.text.trim(), backend);
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: SamplingSection(
+                  value: _sampling ?? defaults,
+                  defaults: defaults,
+                  defaultsSource: source,
+                  backend: backend,
+                  onChanged: (v) => setState(() => _sampling = v == defaults ? null : v),
+                  onBackendChanged: (b) => setState(() {
+                    _backend = b;
+                    _backendPicked = true;
+                  }),
+                  onValidChanged: (valid) => setState(() => _samplingValid = valid),
+                ),
+              );
+            }),
             if (_status != null)
               Text(
                 _status!,
@@ -226,7 +282,7 @@ class _ProviderDialogState extends State<_ProviderDialog> {
       actions: [
         OutlineButton(key: const ValueKey('miniai_provider_test'), onPressed: _busy ? null : _test, child: const Text('Test connection')),
         GhostButton(onPressed: widget.close, child: const Text('Cancel')),
-        PrimaryButton(key: const ValueKey('miniai_provider_save'), onPressed: _busy ? null : _save, child: const Text('Save')),
+        PrimaryButton(key: const ValueKey('miniai_provider_save'), onPressed: _busy || !_samplingValid ? null : _save, child: const Text('Save')),
       ],
     );
   }

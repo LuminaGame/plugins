@@ -6,6 +6,7 @@ import 'package:lumina_editor_api/lumina_editor_api.dart';
 
 import '../llm/llm_types.dart';
 import '../llm/openai_compat_provider.dart';
+import '../llm/sampling.dart';
 
 /// What drives a provider.
 enum ProviderKind {
@@ -29,6 +30,8 @@ class ProviderConfig {
     this.kind = ProviderKind.openaiCompat,
     this.command,
     this.vision,
+    this.backend,
+    this.sampling,
   });
 
   /// The Claude Code provider's id.
@@ -52,6 +55,33 @@ class ProviderConfig {
   /// "Model accepts images": null follows [VisionModels.guess].
   final bool? vision;
 
+  /// The server type; null guesses it from [baseUrl].
+  final ServerBackend? backend;
+
+  /// The sampling settings; null follows [SamplingDefaults] for [model].
+  final SamplingSettings? sampling;
+
+  ServerBackend get effectiveBackend => backend ?? ServerBackend.guess(baseUrl);
+
+  /// What every request of this provider carries.
+  SamplingSettings get effectiveSampling => sampling ?? SamplingDefaults.forModel(model, effectiveBackend);
+
+  /// This config with [sampling] (null: back to the defaults) and, when
+  /// given, [backend].
+  ProviderConfig withSampling(SamplingSettings? sampling, {ServerBackend? backend}) => ProviderConfig(
+        id: id,
+        name: name,
+        baseUrl: baseUrl,
+        model: model,
+        supportsTools: supportsTools,
+        local: local,
+        kind: kind,
+        command: command,
+        vision: vision,
+        backend: backend ?? this.backend,
+        sampling: sampling,
+      );
+
   /// Whether tool images go to this model as images.
   bool get acceptsImages => vision ?? VisionModels.guess(model);
 
@@ -73,6 +103,8 @@ class ProviderConfig {
         kind: ProviderKind.values.where((k) => k.name == json['kind']).firstOrNull ?? ProviderKind.openaiCompat,
         command: json['command'] as String?,
         vision: json['vision'] as bool?,
+        backend: ServerBackend.byName(json['backend']),
+        sampling: json['sampling'] is Map ? SamplingSettings.fromJson(Map<String, Object?>.from(json['sampling'] as Map)) : null,
       );
 
   Map<String, Object?> toJson() => {
@@ -85,6 +117,8 @@ class ProviderConfig {
         if (kind != ProviderKind.openaiCompat) 'kind': kind.name,
         'command': ?command,
         'vision': ?vision,
+        'backend': ?backend?.name,
+        'sampling': ?sampling?.toJson(),
       };
 
   /// Loopback endpoints are local models.
@@ -159,6 +193,15 @@ class ProviderSettings extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Stores [sampling] (null: the defaults) on the provider [id] without
+  /// changing which provider is selected.
+  Future<void> updateSampling(String id, SamplingSettings? sampling, {ServerBackend? backend}) async {
+    if (!providers.any((p) => p.id == id)) return;
+    providers = [for (final p in providers) p.id == id ? p.withSampling(sampling, backend: backend) : p];
+    await storage.writeJson('providers', {'selected': selectedId, 'providers': [for (final p in providers) p.toJson()]});
+    notifyListeners();
+  }
+
   Future<void> _writeKeys() async {
     await storage.writeJson('credentials', Map<String, Object?>.from(_keys));
     // Only the user reads it; Windows profiles are private.
@@ -201,6 +244,8 @@ class ProviderSettings extends ChangeNotifier {
         baseUrl: config.baseUrl,
         apiKey: keyFor(config),
         client: httpClient,
+        backend: config.effectiveBackend,
+        sampling: config.effectiveSampling,
         capabilities: LlmCapabilities(tools: config.supportsTools, vision: config.acceptsImages, maxContext: config.local ? 8192 : 128000),
       );
 

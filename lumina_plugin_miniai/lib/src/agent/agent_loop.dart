@@ -9,6 +9,7 @@ import '../context/editor_context.dart';
 import 'approval.dart';
 import 'chat.dart';
 import 'lumina_primer.dart';
+import 'repetition_guard.dart';
 import 'toolset_selector.dart';
 
 /// Groups a turn's level edits into one undo step (`EditorLevelAccess.runTransaction`).
@@ -30,6 +31,7 @@ class AgentLoop {
     this.projectNotes,
     this.compactPrimer = false,
     this.guideResultBudget = 16000,
+    this.repeatedCallLimit = 3,
   });
 
   final LlmProvider provider;
@@ -53,6 +55,18 @@ class AgentLoop {
   /// A `get_lumina_guide` result is cut only past this: the guide is what
   /// the model reads to stop guessing.
   final int guideResultBudget;
+
+  /// A call with the same tool, arguments and result this many times (this
+  /// turn and the previous one) gets a note that it will not change; one
+  /// more in the same turn ends the turn.
+  final int repeatedCallLimit;
+
+  /// How many earlier user messages steer the toolset with the current one.
+  static const int earlierMessages = 3;
+
+  /// The note that ends a turn whose answer or reasoning repeats itself.
+  static const String repetitionNote =
+      'The model repeated itself; stopped. Try a lower temperature or a higher repeat penalty in Model provider.';
 
   /// The longest project note block sent to the model.
   static const int maxProjectNotes = 4000;
@@ -106,7 +120,11 @@ class AgentLoop {
         if (t.name != ClaudeCodePermissions.serverName && t.name != ClaudeCodePermissions.toolName) t,
     ];
     final mode = chat.gate.mode;
-    final hidden = mode == ApprovalMode.plan ? [for (final t in selector.hiddenFor(all, userText, chat.gate)) t.name] : const <String>[];
+    // A follow-up without keywords ("go on") keeps the conversation's tools.
+    final users = [for (final i in chat.items) if (i is UserItem) i.text];
+    final earlier = users.length <= earlierMessages ? users : users.sublist(users.length - earlierMessages);
+    final hidden =
+        mode == ApprovalMode.plan ? [for (final t in selector.hiddenFor(all, userText, chat.gate, earlier: earlier)) t.name] : const <String>[];
     // The mode, the notes and the hidden tools may have changed since the
     // chat began.
     final system = LlmMessage.system(
@@ -129,9 +147,9 @@ class AgentLoop {
     try {
       final tx = transaction;
       if (tx != null) {
-        await tx(label, () => _turn(chat, turn, userText, all, token));
+        await tx(label, () => _turn(chat, turn, userText, all, token, earlier));
       } else {
-        await _turn(chat, turn, userText, all, token);
+        await _turn(chat, turn, userText, all, token, earlier);
       }
       if (mode == ApprovalMode.plan) _notePlanBlocked(chat, turn, userText, hidden);
     } catch (e) {
@@ -157,23 +175,35 @@ class AgentLoop {
     }
   }
 
-  Future<void> _turn(Chat chat, TurnRecord turn, String userText, List<McpTool> all, CancelToken token) async {
-    final offered = selector.select(all, userText, chat.gate);
+  Future<void> _turn(Chat chat, TurnRecord turn, String userText, List<McpTool> all, CancelToken token, List<String> earlier) async {
+    final offered = selector.select(all, userText, chat.gate, earlier: earlier);
     final specs = [for (final t in offered) selector.specOf(t)];
     var badCalls = 0;
+    final repeats = _previousTurnCalls(chat);
+    final nudged = <String>{};
     for (var round = 0; round < maxRounds; round++) {
       final assistant = AssistantItem();
       chat.items.add(assistant);
       final calls = <LlmToolCall>[];
       LlmError? error;
-      await for (final event in provider.stream(LlmRequest(model: model, messages: List.of(chat.history), tools: specs), cancel: token)) {
+      // Stops this round's stream alone (the guard), or with the turn.
+      final roundCancel = CancelToken();
+      unawaited(token.whenCancelled.then((_) => roundCancel.cancel()));
+      final textGuard = RepetitionGuard();
+      final thinkingGuard = RepetitionGuard();
+      RepetitionHit? looped;
+      var loopedInThinking = false;
+      await for (final event in provider.stream(LlmRequest(model: model, messages: List.of(chat.history), tools: specs), cancel: roundCancel)) {
         switch (event) {
           case TextDelta(:final text):
             assistant.endThinking();
             assistant.text.write(text);
+            looped = textGuard.add(text);
             chat.changed();
           case ThinkingDelta(:final text):
             assistant.addThinking(text);
+            looped = thinkingGuard.add(text);
+            loopedInThinking = looped != null;
             chat.changed();
           case ToolCallEvent(:final call):
             assistant.endThinking();
@@ -185,8 +215,26 @@ class AgentLoop {
           case LlmError():
             error = event;
         }
+        if (looped != null) {
+          roundCancel.cancel();
+          break;
+        }
       }
       assistant.endThinking();
+      final hit = looped;
+      if (hit != null && !token.isCancelled) {
+        // Keep one copy of the repeated block.
+        final buffer = loopedInThinking ? assistant.thinking : assistant.text;
+        if (hit.cut > 0) {
+          final kept = buffer.toString();
+          buffer
+            ..clear()
+            ..write(kept.substring(0, kept.length - hit.cut));
+        }
+        chat.history.add(LlmMessage.assistant(assistant.text.toString()));
+        chat.items.add(NoteItem(repetitionNote));
+        return;
+      }
       if (assistant.text.isEmpty && !assistant.hasThinking) chat.items.remove(assistant);
       if (token.isCancelled) {
         chat.items.add(NoteItem('Stopped.'));
@@ -199,12 +247,21 @@ class AgentLoop {
       chat.history.add(LlmMessage.assistant(assistant.text.toString(), toolCalls: calls));
       if (calls.isEmpty) return;
 
-      for (final call in calls) {
+      for (var c = 0; c < calls.length; c++) {
+        final call = calls[c];
         if (token.isCancelled) {
           chat.items.add(NoteItem('Stopped.'));
           return;
         }
         final ok = await _runCall(chat, turn, call, offered, all, token);
+        if (_repeatedCall(chat, call, repeats, nudged)) {
+          _skipCalls(chat, calls.sublist(c + 1));
+          chat.items.add(NoteItem(
+            'The model kept repeating the same ${call.name} call with the same result; stopped. '
+            'Try rephrasing the request, or a lower temperature / higher repeat penalty in Model provider.',
+          ));
+          return;
+        }
         badCalls = ok ? 0 : badCalls + 1;
         if (badCalls >= 2) {
           chat.items.add(NoteItem('The model sent two invalid tool calls in a row; the turn stops here.', isError: true));
@@ -213,6 +270,79 @@ class AgentLoop {
       }
     }
     chat.items.add(NoteItem('Stopped after $maxRounds rounds of tool calls. Send "continue" to go on.'));
+  }
+
+  /// The key of a finished call: tool, canonical arguments and text result.
+  static String _callKey(String name, String argumentsJson, String result) {
+    Object? canonical(Object? v) => switch (v) {
+          final Map<dynamic, dynamic> m => {for (final k in (m.keys.map((k) => '$k').toList()..sort())) k: canonical(m[k])},
+          final List<dynamic> l => [for (final e in l) canonical(e)],
+          _ => v,
+        };
+    String args;
+    try {
+      args = jsonEncode(canonical(jsonDecode(argumentsJson)));
+    } on FormatException {
+      args = argumentsJson;
+    }
+    return jsonEncode([name, args, result]);
+  }
+
+  /// Calls that count as repeats: run (done or failed), no images.
+  static bool _counts(ToolCallItem t) => (t.status == ToolCallStatus.done || t.status == ToolCallStatus.failed) && t.images.isEmpty;
+
+  /// The calls of the previous turn, counted by [_callKey].
+  static Map<String, int> _previousTurnCalls(Chat chat) {
+    final counts = <String, int>{};
+    if (chat.turns.length < 2) return counts;
+    final from = chat.turns[chat.turns.length - 2].userItemIndex;
+    final to = chat.turns.last.userItemIndex;
+    for (var i = from; i < to && i < chat.items.length; i++) {
+      if (chat.items[i] case final ToolCallItem t when _counts(t)) {
+        final key = _callKey(t.call.name, t.call.argumentsJson, t.result);
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }
+
+  /// Counts [call] (just run); at [repeatedCallLimit] its result gets a
+  /// note, and true when it repeats again after that note in this turn.
+  bool _repeatedCall(Chat chat, LlmToolCall call, Map<String, int> repeats, Set<String> nudged) {
+    final item = chat.items.whereType<ToolCallItem>().lastOrNull;
+    if (item == null || !identical(item.call, call) || !_counts(item)) return false;
+    final key = _callKey(call.name, call.argumentsJson, item.result);
+    final count = repeats[key] = (repeats[key] ?? 0) + 1;
+    if (nudged.contains(key)) return true;
+    if (count < repeatedCallLimit) return false;
+    nudged.add(key);
+    final last = chat.history.last;
+    if (last.role == LlmRole.tool && last.toolCallId == call.id) {
+      chat.history[chat.history.length - 1] = LlmMessage.toolResult(
+        toolCallId: call.id,
+        toolName: call.name,
+        images: last.images,
+        content: '${last.content}\n${repeatNote(call.name, count)}',
+      );
+    }
+    return false;
+  }
+
+  /// What a repeated call's result tells the model.
+  static String repeatNote(String tool, int count) =>
+      '[MiniAI: you called $tool with the same arguments $count times and got the same result; it will not change. '
+      'Use a different tool, or answer the user.]';
+
+  /// Answers [calls] the turn will not run, so every call in the history
+  /// has a result.
+  static void _skipCalls(Chat chat, List<LlmToolCall> calls) {
+    for (final call in calls) {
+      chat.history.add(LlmMessage.toolResult(
+        toolCallId: call.id,
+        toolName: call.name,
+        content: jsonEncode({'status': 'skipped', 'reason': 'the turn was stopped'}),
+      ));
+    }
   }
 
   /// Runs one call; false when it was malformed (unknown tool, bad JSON).

@@ -17,6 +17,7 @@ import 'claude_code/claude_code_protocol.dart';
 import 'context/editor_context.dart';
 import 'context/selection_watcher.dart';
 import 'llm/llm_types.dart';
+import 'llm/sampling.dart';
 import 'local/local_model_manager.dart';
 import 'settings/miniai_project_settings.dart';
 import 'settings/provider_settings.dart';
@@ -253,11 +254,22 @@ class MiniAiController extends ChangeNotifier {
     final url = local.baseUrl;
     if (url != null && url != _localUrl) {
       _localUrl = url;
-      unawaited(settings.save(ProviderConfig(id: localProviderId, name: 'Local (${local.variant.label})', baseUrl: url, model: local.variant.id, local: true)));
+      unawaited(settings.save(_localConfig(url)));
     }
     if (url == null) _localUrl = null;
     notifyListeners();
   }
+
+  /// The local provider at [url]; the sampling the user set on it stays.
+  ProviderConfig _localConfig(String url) => ProviderConfig(
+        id: localProviderId,
+        name: 'Local (${local.variant.label})',
+        baseUrl: url,
+        model: local.variant.id,
+        local: true,
+        backend: ServerBackend.llamaCpp,
+        sampling: settings.providers.where((p) => p.id == localProviderId).firstOrNull?.sampling,
+      );
 
   /// The local provider is selected and its server is not up.
   bool get needsLocalStart => settings.selected?.id == localProviderId && local.status != LocalModelStatus.ready;
@@ -306,9 +318,7 @@ class MiniAiController extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      await settings.save(
-        ProviderConfig(id: localProviderId, name: 'Local (${local.variant.label})', baseUrl: local.baseUrl!, model: local.variant.id, local: true),
-      );
+      await settings.save(_localConfig(local.baseUrl!));
       return send(text, context: ctx);
     }
     final cancel = _cancel = CancelToken();

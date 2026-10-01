@@ -2,9 +2,12 @@ import 'dart:async';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
+import 'llm/sampling.dart';
 import 'local/local_catalog.dart';
 import 'local/local_model_manager.dart';
 import 'miniai_controller.dart';
+import 'sampling_section.dart';
+import 'settings/provider_settings.dart';
 
 /// Local model (recommended): pick a MiniCPM5 variant, download
 /// it with llama.cpp, start / stop / restart it on a GPU, and see its state.
@@ -45,6 +48,9 @@ class _LocalModelSectionState extends State<LocalModelSection> {
   void _changed() {
     if (mounted) setState(() {});
   }
+
+  ProviderConfig? _localConfig() =>
+      widget.controller.settings.providers.where((p) => p.id == MiniAiController.localProviderId).firstOrNull;
 
   /// What a download still fetches.
   int _downloadSize(ModelVariant v) {
@@ -224,6 +230,25 @@ class _LocalModelSectionState extends State<LocalModelSection> {
                   ),
               ],
             ),
+          ],
+          // The local provider's sampling, once it exists (after the first
+          // start); saved as it changes.
+          if ((installed ? _localConfig() : null) case final config?) ...[
+            const SizedBox(height: 6),
+            Builder(builder: (context) {
+              final (defaults, source) = SamplingDefaults.withSource(config.model, ServerBackend.llamaCpp);
+              return SamplingSection(
+                keyPrefix: 'miniai_local_sampling',
+                value: config.sampling ?? defaults,
+                defaults: defaults,
+                defaultsSource: source,
+                backend: ServerBackend.llamaCpp,
+                onChanged: (v) {
+                  unawaited(widget.controller.settings.updateSampling(config.id, v == defaults ? null : v, backend: ServerBackend.llamaCpp));
+                  setState(() {});
+                },
+              );
+            }),
           ],
           if (bad && m.message != null) ...[
             const SizedBox(height: 6),

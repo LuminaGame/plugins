@@ -44,6 +44,13 @@ class ReplayServer {
       await response.close();
       return;
     }
+    if (request.method == 'GET') {
+      // Not a server-type probe target: like an OpenAI-compatible server
+      // without llama.cpp's / Ollama's / vLLM's extra endpoints.
+      response.statusCode = HttpStatus.notFound;
+      await response.close();
+      return;
+    }
     final body = await utf8.decoder.bind(request).join();
     requests.add(jsonDecode(body) as Map<String, Object?>);
     final error = nextError;
