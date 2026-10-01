@@ -16,7 +16,7 @@ dependencies:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina_editor_api
-  shadcn_flutter: 0.0.54
+  shadcn_flutter: 0.0.55
   # The provider's HTTP + SSE client (the host resolves ^1.6.0).
   http: ^1.6.0
   # The local model install (SHA-256 checks, llama.cpp archives).

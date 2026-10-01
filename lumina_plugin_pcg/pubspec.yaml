@@ -22,7 +22,7 @@ dependencies:
       path: lumina
   # Pinned to the exact version Lumina Studio resolves: a plugin shares the
   # host's single shadcn_flutter copy.
-  shadcn_flutter: 0.0.54
+  shadcn_flutter: 0.0.55
 
 dev_dependencies:
   flutter_test:
