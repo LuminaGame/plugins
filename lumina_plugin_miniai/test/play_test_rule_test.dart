@@ -12,4 +12,13 @@ void main() {
     }
     expect(ClaudeCodeAgent.systemPrompt, contains(AgentLoop.playTestRule));
   });
+
+  test('every system prompt says to think in any language and answer in the user\'s', () {
+    expect(AgentLoop.languageRule, contains('think in whatever language'));
+    expect(AgentLoop.languageRule, contains('language of their last message'));
+    for (final mode in ApprovalMode.values) {
+      expect(AgentLoop.systemPrompt(mode: mode), contains(AgentLoop.languageRule));
+    }
+    expect(ClaudeCodeAgent.systemPrompt, contains(AgentLoop.languageRule));
+  });
 }
