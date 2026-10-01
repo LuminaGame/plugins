@@ -153,14 +153,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.1.2"
-  country_flags:
-    dependency: transitive
-    description:
-      name: country_flags
-      sha256: f022d18337f3861f1f4e319b936cb53920de9259f38cb09e169eace9942e2b79
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.1.2"
   coverage:
     dependency: transitive
     description:
@@ -185,22 +177,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.3"
-  email_validator:
-    dependency: transitive
-    description:
-      name: email_validator
-      sha256: b19aa5d92fdd76fbc65112060c94d45ba855105a28bb6e462de7ff03b12fa1fb
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.0"
-  expressions:
-    dependency: transitive
-    description:
-      name: expressions
-      sha256: f3b0e99563a9a1bde1138e728eb722f292cc7d2aec55d28136c49b1a370306c5
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.5+3"
   fake_async:
     dependency: transitive
     description:
@@ -231,25 +207,31 @@ packages:
     source: sdk
     version: "0.0.0"
   flutter_assimp:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../tools/flutter_assimp"
-      relative: true
-    source: path
+      path: flutter_assimp
+      ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      url: "https://github.com/LuminaGame/tools.git"
+    source: git
     version: "0.0.1"
   flutter_filament:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../lumina/flutter_filament"
-      relative: true
-    source: path
+      path: flutter_filament
+      ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
+      resolved-ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
+      url: "https://github.com/LuminaGame/lumina.git"
+    source: git
     version: "0.0.1"
   flutter_gstreamer:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../tools/flutter_gstreamer"
-      relative: true
-    source: path
+      path: flutter_gstreamer
+      ref: HEAD
+      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      url: "https://github.com/LuminaGame/tools.git"
+    source: git
     version: "0.1.0"
   flutter_lints:
     dependency: transitive
@@ -259,17 +241,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
-  flutter_localizations:
-    dependency: transitive
-    description: flutter
-    source: sdk
-    version: "0.0.0"
   flutter_riglogic:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../tools/flutter_riglogic"
-      relative: true
-    source: path
+      path: flutter_riglogic
+      ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      url: "https://github.com/LuminaGame/tools.git"
+    source: git
     version: "0.0.1"
   flutter_test:
     dependency: transitive
@@ -348,14 +327,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.10.1"
-  intl:
-    dependency: transitive
-    description:
-      name: intl
-      sha256: "1ca20c894b1717686a2319b8548763d812bc0aabdac580420a44c5178c57a867"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.20.3"
   io:
     dependency: transitive
     description:
@@ -364,22 +335,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.0"
-  jovial_misc:
-    dependency: transitive
-    description:
-      name: jovial_misc
-      sha256: "065b5240badae6b13472efdea28fffe8baf914a7831361469a95c6456d9b8dc8"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.10.0"
-  jovial_svg:
-    dependency: transitive
-    description:
-      name: jovial_svg
-      sha256: "075071ae3b67d7bdf85979616d9fd6c4da27c2e6ab2e68b86e412cca87385225"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.31"
   json_annotation:
     dependency: transitive
     description:
@@ -429,32 +384,40 @@ packages:
     source: hosted
     version: "1.3.0"
   lumina:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../lumina/lumina"
-      relative: true
-    source: path
+      path: lumina
+      ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
+      resolved-ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
+      url: "https://github.com/LuminaGame/lumina.git"
+    source: git
     version: "0.0.1"
   lumina_editor_api:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../lumina/lumina_editor_api"
-      relative: true
-    source: path
+      path: lumina_editor_api
+      ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
+      resolved-ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
+      url: "https://github.com/LuminaGame/lumina.git"
+    source: git
     version: "0.0.1"
   lumina_mouse_capture:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../tools/lumina_mouse_capture"
-      relative: true
-    source: path
+      path: lumina_mouse_capture
+      ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      url: "https://github.com/LuminaGame/tools.git"
+    source: git
     version: "0.0.1"
   lumina_smoke:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "../tools/lumina_smoke"
-      relative: true
-    source: path
+      path: lumina_smoke
+      ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
+      url: "https://github.com/LuminaGame/tools.git"
+    source: git
     version: "0.1.0"
   markdown:
     dependency: transitive
@@ -552,14 +515,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.1.0"
-  phonecodes:
-    dependency: transitive
-    description:
-      name: phonecodes
-      sha256: d963c19d35914cd83620e64125689a0c09047e25046639f2a124142ccf5868bb
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.0.4"
   platform:
     dependency: transitive
     description:
@@ -624,14 +579,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.6.0"
-  quiver:
-    dependency: transitive
-    description:
-      name: quiver
-      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.2"
   record_use:
     dependency: transitive
     description:
@@ -640,22 +587,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.0"
-  rxdart:
-    dependency: transitive
-    description:
-      name: rxdart
-      sha256: "5c3004a4a8dbb94bd4bf5412a4def4acdaa12e12f269737a5751369e12d1a962"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.28.0"
   shadcn_flutter:
     dependency: transitive
     description:
       name: shadcn_flutter
-      sha256: "403a9e790447dc4b6bae73a810d7ffa52baece4d7b29b32de56d0dd769be080e"
+      sha256: da1cb2f93176f62f1e869e38f2ff944d1af0a24ddf7fc8f02f7ef3066f397886
       url: "https://pub.dev"
     source: hosted
-    version: "0.0.54"
+    version: "0.0.55"
   shelf:
     dependency: transitive
     description:
@@ -688,14 +627,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
-  skeletonizer:
-    dependency: transitive
-    description:
-      name: skeletonizer
-      sha256: "9f38f9b47ec3cf2235a6a4f154a88a95432bc55ba98b3e2eb6ced5c1974bc122"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.3"
   sky_engine:
     dependency: transitive
     description: flutter
