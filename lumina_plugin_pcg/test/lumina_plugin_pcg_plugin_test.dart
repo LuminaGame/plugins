@@ -1,8 +1,9 @@
 // Shipped test for LuminaPluginPcg plugin (the shape the wizard generates,
 // extended for the PCG contributions).
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show ValueNotifier;
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:lumina_plugin_pcg/lumina_plugin_pcg.dart';
@@ -60,12 +61,28 @@ class _TestEditorContext implements LuminaEditorContext {
 
   @override
   void registerConsoleCommand(String name, String help, void Function(List<String> args) handler) => consoleCommands[name] = help;
+
+  @override
+  void registerTab(EditorTabDescriptor tab) {}
+
+  @override
+  void openTab(String tabId, {String? title}) {}
+
+  @override
+  Future<void> saveAsset({
+    required String relativePath,
+    Uint8List? bytes,
+    bool generateThumbnail = true,
+  }) async {}
 }
 
 class _TestHostContext extends _TestEditorContext implements LuminaEditorHostContext {
   @override
   final EditorLevelAccess level;
   _TestHostContext(this.level);
+
+  @override
+  Widget build3DViewport(BuildContext context, Plugin3DViewportOptions options) => const SizedBox();
 }
 
 void main() {
