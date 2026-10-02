@@ -114,6 +114,8 @@ class AgentLoop {
         compactPrimer ? LuminaPrimer.compact : LuminaPrimer.full,
         playTestRule,
         languageRule,
+        'Interactive choices: when presenting choices, asking what to do next, or clarifying user intent, '
+            'ALWAYS call ask_question with selectable options instead of writing numbered lists in plain text.',
         'Answer briefly.',
         if (projectNotes != null && projectNotes.trim().isNotEmpty) ...[
           'Project notes from the team (follow them unless they conflict with the rules above):',
@@ -123,6 +125,34 @@ class AgentLoop {
         ],
       ].join('\n');
 
+  /// The interactive question tool provided to models.
+  static final McpTool askQuestionTool = McpTool(
+    name: 'ask_question',
+    title: 'Ask Question',
+    description: 'Ask the user a multiple-choice question to pick next steps, clarify intent, or resolve ambiguity. '
+        'Always call this tool when presenting options or choices to the user rather than listing them in plain text.',
+    inputSchema: McpSchema.object({
+      'question': McpSchema.string('The question prompt to present to the user.'),
+      'options': {
+        'type': 'array',
+        'description': 'The selectable options the user can pick from.',
+        'items': {
+          'type': 'object',
+          'properties': {
+            'label': {'type': 'string', 'description': 'The short text for the option.'},
+            'description': {'type': 'string', 'description': 'Optional longer description explaining this choice.'},
+          },
+          'required': ['label'],
+        },
+      },
+      'header': McpSchema.string('Optional short chip label (e.g. "Next Step", "Choice").'),
+      'is_multi_select': McpSchema.boolean('Whether the user can select multiple options (default false).'),
+    }, required: ['question', 'options']),
+    risk: McpToolRisk.readOnly,
+    groups: const {McpToolGroups.core},
+    handler: (args) async => McpToolResult.text('interactive'),
+  );
+
   /// Runs [userText] as one turn of [chat]. Completes when the turn ends
   /// (answered, stopped, failed, or out of rounds).
   /// [context] (the selection, the mentions) goes before the text in the
@@ -131,6 +161,7 @@ class AgentLoop {
     final token = cancel ?? CancelToken();
     // MiniAI's own permission tool answers Claude Code, not the model.
     final all = [
+      askQuestionTool,
       for (final t in mcp.listTools())
         if (t.name != ClaudeCodePermissions.serverName && t.name != ClaudeCodePermissions.toolName) t,
     ];
@@ -378,7 +409,9 @@ class AgentLoop {
   /// Runs one call; false when it was malformed (unknown tool, bad JSON).
   Future<bool> _runCall(Chat chat, TurnRecord turn, LlmToolCall call, List<McpTool> offered, List<McpTool> all, CancelToken token) async {
     // A tool the mode hides is still known: the call is denied, not unknown.
-    final tool = offered.where((t) => t.name == call.name).firstOrNull ?? all.where((t) => t.name == call.name).firstOrNull;
+    final tool = offered.where((t) => t.name == call.name).firstOrNull ??
+        all.where((t) => t.name == call.name).firstOrNull ??
+        (call.name == 'AskUserQuestion' ? askQuestionTool : null);
     final item = ToolCallItem(call: call, risk: tool?.risk);
     chat.items.add(item);
     chat.changed();
@@ -403,6 +436,25 @@ class AgentLoop {
     } on FormatException catch (e) {
       finish(ToolCallStatus.failed, 'Error: the arguments of ${call.name} are not a JSON object (${e.message}). Send valid JSON.');
       return false;
+    }
+
+    if (call.name == 'ask_question' || call.name == 'AskUserQuestion') {
+      item.status = ToolCallStatus.waitingAnswer;
+      item.question = Completer<Map<String, String>?>();
+      chat.changed();
+      final answers = await Future.any([
+        item.question!.future,
+        token.whenCancelled.then((_) => null),
+      ]);
+      item.question = null;
+      if (answers == null) {
+        finish(ToolCallStatus.denied, jsonEncode({'status': 'skipped', 'reason': 'the user skipped the question'}));
+        return true;
+      }
+      item.answers = answers;
+      final answerSummary = [for (final e in answers.entries) '"${e.key}"="${e.value}"'].join(', ');
+      finish(ToolCallStatus.done, jsonEncode({'answers': answers, 'status': 'answered', 'summary': answerSummary}));
+      return true;
     }
 
     switch (chat.gate.decide(tool)) {

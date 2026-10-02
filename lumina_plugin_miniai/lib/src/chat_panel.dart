@@ -424,6 +424,7 @@ class _ChatPanelState extends State<ChatPanel> {
             children: [
               if (_mentionQuery != null) _mentionMenu(context) else if (_slashQuery != null) _slashMenu(context),
               _selectionChip(context),
+              _pendingQuestions(context),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -680,6 +681,79 @@ class _ChatPanelState extends State<ChatPanel> {
     );
   }
 
+  /// Active question prompts waiting for an answer, rendered prominently
+  /// right above the chat input box.
+  Widget _pendingQuestions(BuildContext context) {
+    final pending = c.chat.pendingQuestions;
+    if (pending.isEmpty) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final item in pending) ...[
+          Builder(
+            builder: (ctx) {
+              final questions = UserQuestion.listFrom(JsonSpans.tryParse(item.call.argumentsJson)?.$1);
+              return Container(
+                key: ValueKey('miniai_active_question_${item.call.id}'),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.card,
+                  border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.6), width: 1.5),
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(LucideIcons.messageCircleQuestion, size: 14, color: theme.colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'AI Question',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (questions.isNotEmpty)
+                      QuestionForm(
+                        key: ValueKey('miniai_questions_${item.call.id}'),
+                        chat: c.chat,
+                        item: item,
+                        questions: questions,
+                      )
+                    else ...[
+                      ToolPayloadView(key: ValueKey('miniai_tool_args_${item.call.id}'), text: item.call.argumentsJson),
+                      const SizedBox(height: 8),
+                      OutlineButton(
+                        key: ValueKey('miniai_question_skip_${item.call.id}'),
+                        density: ButtonDensity.compact,
+                        onPressed: () => c.chat.answerQuestions(item, null),
+                        child: const Text('Skip', style: TextStyle(fontSize: 10)),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
   /// The commands matching the `/…` typed so far; a click sends one.
   Widget _slashMenu(BuildContext context) {
     final theme = Theme.of(context);
@@ -924,7 +998,6 @@ class _ToolCallCardState extends State<_ToolCallCard> {
     };
     final waiting = item.status == ToolCallStatus.waitingApproval;
     final asking = item.status == ToolCallStatus.waitingAnswer;
-    final questions = asking ? UserQuestion.listFrom(JsonSpans.tryParse(item.call.argumentsJson)?.$1) : const <UserQuestion>[];
     return Container(
       decoration: BoxDecoration(
         border: Border.all(color: waiting || asking ? theme.colorScheme.primary : theme.colorScheme.border),
@@ -957,27 +1030,31 @@ class _ToolCallCardState extends State<_ToolCallCard> {
             const SizedBox(height: 6),
             ToolImageThumbnails(callId: item.call.id, images: item.images),
           ],
-          if (asking && questions.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            QuestionForm(key: ValueKey('miniai_questions_${item.call.id}'), chat: widget.chat, item: item, questions: questions),
+          if (asking) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Row(
+                children: [
+                  Icon(LucideIcons.arrowDown, size: 12, color: theme.colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Text('Answer prompt shown above message input', style: TextStyle(fontSize: 10, color: theme.colorScheme.primary)),
+                ],
+              ),
+            ),
           ],
           if (!asking && item.answers != null) QuestionAnswers(key: ValueKey('miniai_answers_${item.call.id}'), answers: item.answers!),
-          if (_open || waiting || (asking && questions.isEmpty)) ...[
+          if (_open || waiting) ...[
             const SizedBox(height: 6),
             ToolPayloadView(key: ValueKey('miniai_tool_args_${item.call.id}'), text: item.call.argumentsJson),
           ],
           if (_open && item.result.isNotEmpty) ...[
             const SizedBox(height: 6),
             ToolPayloadView(key: ValueKey('miniai_tool_result_${item.call.id}'), text: item.result, muted: true),
-          ],
-          if (asking && questions.isEmpty) ...[
-            const SizedBox(height: 8),
-            OutlineButton(
-              key: ValueKey('miniai_question_skip_${item.call.id}'),
-              density: ButtonDensity.compact,
-              onPressed: () => widget.chat.answerQuestions(item, null),
-              child: const Text('Skip', style: TextStyle(fontSize: 10)),
-            ),
           ],
           if (waiting) ...[
             const SizedBox(height: 8),

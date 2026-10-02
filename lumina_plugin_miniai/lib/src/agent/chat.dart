@@ -96,20 +96,47 @@ class UserQuestion {
   final List<({String label, String description})> options;
   final bool multiSelect;
 
-  /// The questions of an AskUserQuestion input (`{questions: [...]}`).
-  static List<UserQuestion> listFrom(Object? input) => [
-        for (final q in (input is Map ? input['questions'] as List? ?? const [] : const []))
-          if (q is Map && q['question'] is String)
-            UserQuestion(
-              question: q['question'] as String,
-              header: '${q['header'] ?? ''}',
-              multiSelect: q['multiSelect'] == true,
-              options: [
-                for (final o in (q['options'] as List? ?? const []))
-                  if (o is Map) (label: '${o['label'] ?? ''}', description: '${o['description'] ?? ''}'),
-              ],
-            ),
+  /// The questions of an AskUserQuestion or ask_question input
+  /// (`{question: '...', options: [...]}` or `{questions: [...]}`).
+  static List<UserQuestion> listFrom(Object? input) {
+    if (input is! Map) return const [];
+    // 1. Single question format: {question: "...", options: [...], header: "..."}
+    if (input['question'] is String) {
+      final opts = <({String label, String description})>[];
+      for (final o in (input['options'] as List? ?? const [])) {
+        if (o is Map) {
+          opts.add((label: '${o['label'] ?? o['text'] ?? ''}', description: '${o['description'] ?? ''}'));
+        } else if (o != null) {
+          opts.add((label: '$o', description: ''));
+        }
+      }
+      return [
+        UserQuestion(
+          question: input['question'] as String,
+          header: '${input['header'] ?? ''}',
+          multiSelect: input['multiSelect'] == true || input['is_multi_select'] == true,
+          options: opts,
+        ),
       ];
+    }
+    // 2. Questions array format: {questions: [...]}
+    return [
+      for (final q in (input['questions'] as List? ?? const []))
+        if (q is Map && q['question'] is String)
+          UserQuestion(
+            question: q['question'] as String,
+            header: '${q['header'] ?? ''}',
+            multiSelect: q['multiSelect'] == true || q['is_multi_select'] == true,
+            options: [
+              for (final o in (q['options'] as List? ?? const []))
+                if (o is Map)
+                  (label: '${o['label'] ?? o['text'] ?? ''}', description: '${o['description'] ?? ''}')
+                else if (o != null)
+                  (label: '$o', description: ''),
+            ],
+          ),
+    ];
+  }
 }
 
 /// A note from MiniAI itself: stopped, a provider error, the round limit.

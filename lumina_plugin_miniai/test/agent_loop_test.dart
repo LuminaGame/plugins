@@ -1,4 +1,5 @@
 // The agent loop over real recorded MiniCPM5 streams.
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -241,5 +242,29 @@ void main() {
     expect(chat.items.any((i) => i is NoteItem && i.text.contains('Context limit reached')), isTrue);
     expect(chat.items.whereType<AssistantItem>().last.text.toString(), isNotEmpty);
     expect(chat.running, isFalse);
+  });
+
+  test('ask_question tool is available in core tools and handles interactive answers', () async {
+    expect(AgentLoop.askQuestionTool.name, 'ask_question');
+    expect(AgentLoop.askQuestionTool.groups, contains(McpToolGroups.core));
+
+    final chat = Chat(id: 'c_ask');
+    final completer = Completer<Map<String, String>?>();
+    final item = ToolCallItem(
+      call: const LlmToolCall(
+        id: 'q1',
+        name: 'ask_question',
+        argumentsJson: '{"question": "Which option?", "options": [{"label": "A"}, {"label": "B"}]}',
+      ),
+      risk: McpToolRisk.readOnly,
+    );
+    item.question = completer;
+    item.status = ToolCallStatus.waitingAnswer;
+    chat.items.add(item);
+    expect(chat.pendingQuestions.length, 1);
+
+    chat.answerQuestions(item, {'Which option?': 'A'});
+    final result = await completer.future;
+    expect(result, {'Which option?': 'A'});
   });
 }

@@ -207,31 +207,25 @@ packages:
     source: sdk
     version: "0.0.0"
   flutter_assimp:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      path: flutter_assimp
-      ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      url: "https://github.com/LuminaGame/tools.git"
-    source: git
+      path: "../tools/flutter_assimp"
+      relative: true
+    source: path
     version: "0.0.1"
   flutter_filament:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      path: flutter_filament
-      ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
-      resolved-ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
-      url: "https://github.com/LuminaGame/lumina.git"
-    source: git
+      path: "../lumina/flutter_filament"
+      relative: true
+    source: path
     version: "0.0.1"
   flutter_gstreamer:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      path: flutter_gstreamer
-      ref: HEAD
-      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      url: "https://github.com/LuminaGame/tools.git"
-    source: git
+      path: "../tools/flutter_gstreamer"
+      relative: true
+    source: path
     version: "0.1.0"
   flutter_lints:
     dependency: transitive
@@ -242,13 +236,11 @@ packages:
     source: hosted
     version: "6.0.0"
   flutter_riglogic:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      path: flutter_riglogic
-      ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      url: "https://github.com/LuminaGame/tools.git"
-    source: git
+      path: "../tools/flutter_riglogic"
+      relative: true
+    source: path
     version: "0.0.1"
   flutter_test:
     dependency: transitive
@@ -384,40 +376,32 @@ packages:
     source: hosted
     version: "1.3.0"
   lumina:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      path: lumina
-      ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
-      resolved-ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
-      url: "https://github.com/LuminaGame/lumina.git"
-    source: git
+      path: "../lumina/lumina"
+      relative: true
+    source: path
     version: "0.0.1"
   lumina_editor_api:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      path: lumina_editor_api
-      ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
-      resolved-ref: "1da1433f0d7478a8591a4356f793bd68a82a5084"
-      url: "https://github.com/LuminaGame/lumina.git"
-    source: git
+      path: "../lumina/lumina_editor_api"
+      relative: true
+    source: path
     version: "0.0.1"
   lumina_mouse_capture:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      path: lumina_mouse_capture
-      ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      url: "https://github.com/LuminaGame/tools.git"
-    source: git
+      path: "../tools/lumina_mouse_capture"
+      relative: true
+    source: path
     version: "0.0.1"
   lumina_smoke:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      path: lumina_smoke
-      ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      resolved-ref: "879df0e0559ba50e3ffa2a17e677fa9f1a9c7f93"
-      url: "https://github.com/LuminaGame/tools.git"
-    source: git
+      path: "../tools/lumina_smoke"
+      relative: true
+    source: path
     version: "0.1.0"
   markdown:
     dependency: transitive
