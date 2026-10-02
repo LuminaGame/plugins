@@ -131,6 +131,9 @@ class FileLevel extends ChangeNotifier implements EditorLevelAccess {
   void openAssetEditor(String assetPath) => openedAssets.add(assetPath);
 
   @override
+  Future<bool> openLevel(String relativePath, {bool show = true}) async => false;
+
+  @override
   void log(String message, {String level = 'info', String source = 'Plugin'}) => logs.add('[$level] $source: $message');
 }
 

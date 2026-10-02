@@ -90,6 +90,8 @@ class _StackLevel extends ChangeNotifier implements EditorLevelAccess {
   @override
   void openAssetEditor(String assetPath) {}
   @override
+  Future<bool> openLevel(String relativePath, {bool show = true}) async => false;
+  @override
   void log(String message, {String level = 'info', String source = 'Plugin'}) {}
 }
 
