@@ -83,6 +83,17 @@ class _TestHostContext extends _TestEditorContext implements LuminaEditorHostCon
 
   @override
   Widget build3DViewport(BuildContext context, Plugin3DViewportOptions options) => const SizedBox();
+
+  @override
+  Widget buildAssetPicker(
+    BuildContext context, {
+    required String? selectedPath,
+    required ValueChanged<String?> onSelected,
+    Set<AssetType>? typeFilter,
+    String placeholder = 'None',
+    bool allowClear = false,
+    bool expand = true,
+  }) => const SizedBox();
 }
 
 void main() {
