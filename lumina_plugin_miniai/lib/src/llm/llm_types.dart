@@ -79,7 +79,7 @@ class LlmRequest {
 }
 
 class LlmCapabilities {
-  const LlmCapabilities({this.tools = true, this.streaming = true, this.vision = false, this.maxContext = 8192});
+  const LlmCapabilities({this.tools = true, this.streaming = true, this.vision = false, this.maxContext = 16384});
 
   final bool tools;
   final bool streaming;

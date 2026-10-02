@@ -200,4 +200,46 @@ void main() {
     expect(note.isError, isTrue);
     expect(note.text, contains('Invalid API key'));
   });
+
+  test('compactHistory truncates older tool results and prunes older turns when budget is exceeded', () {
+    final history = [
+      const LlmMessage.system('System prompt'),
+      const LlmMessage.user('First turn'),
+      const LlmMessage.assistant('', toolCalls: [LlmToolCall(id: 'c1', name: 'tool1', argumentsJson: '{}')]),
+      LlmMessage.toolResult(toolCallId: 'c1', toolName: 'tool1', content: 'x' * 2000),
+      const LlmMessage.assistant('First turn done'),
+      const LlmMessage.user('Second turn'),
+    ];
+
+    // Pass 1: moderate budget truncates tool result
+    final compacted1 = AgentLoop.compactHistory(history, maxPromptTokens: 500);
+    expect(compacted1.length, history.length);
+    final toolMsg = compacted1.where((m) => m.role == LlmRole.tool).first;
+    expect(toolMsg.content, contains('Output truncated to conserve context'));
+    expect(toolMsg.content.length, lessThan(400));
+
+    // Pass 2: very tight budget prunes first turn completely, keeping system and second turn
+    final compacted2 = AgentLoop.compactHistory(history, maxPromptTokens: 30);
+    expect(compacted2.first.role, LlmRole.system);
+    expect(compacted2.last.role, LlmRole.user);
+    expect(compacted2.last.content, 'Second turn');
+    expect(compacted2.length, 2);
+  });
+
+  test('a 400 context overflow error automatically triggers compaction, adds a note, and retries', () async {
+    server.nextError = (400, 'request (8247 tokens) exceeds the available context size (8192 tokens), try increasing it');
+    server.queue.add('text');
+    final chat = Chat(id: 'c8');
+    chat.history.addAll([
+      const LlmMessage.system('You are MiniAI.'),
+      const LlmMessage.user('List assets'),
+      const LlmMessage.assistant('', toolCalls: [LlmToolCall(id: 'call_1', name: 'probe.count', argumentsJson: '{}')]),
+      LlmMessage.toolResult(toolCallId: 'call_1', toolName: 'probe.count', content: 'asset ' * 500),
+      const LlmMessage.assistant('Found 500 assets.'),
+    ]);
+    await loop().run(chat, 'devam');
+    expect(chat.items.any((i) => i is NoteItem && i.text.contains('Context limit reached')), isTrue);
+    expect(chat.items.whereType<AssistantItem>().last.text.toString(), isNotEmpty);
+    expect(chat.running, isFalse);
+  });
 }

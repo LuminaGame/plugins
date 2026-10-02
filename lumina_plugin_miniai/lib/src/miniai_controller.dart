@@ -332,8 +332,12 @@ class MiniAiController extends ChangeNotifier {
       maxRounds: MiniAiProjectSettings.maxRounds(project) ?? (config.local ? 6 : 25),
       selector: ToolsetSelector(maxTools: config.local ? 12 : 40, disabledGroups: MiniAiProjectSettings.disabledToolGroups(project)),
       projectNotes: MiniAiProjectSettings.projectNotes(project),
-      // The local model's 8 K context gets the short primer.
+      // The local model gets the short primer, a tighter guide budget and smaller result cuts.
       compactPrimer: config.local,
+      guideResultBudget: config.local ? 3500 : 16000,
+      resultBudget: config.local ? 2500 : 4000,
+      maxContextTokens: config.local ? local.contextSize : null,
+      autoCompact: config.local ? local.autoCompact : true,
     );
     final before = chat.items.length;
     chat

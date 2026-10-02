@@ -32,7 +32,9 @@ class AgentLoop {
     this.compactPrimer = false,
     this.guideResultBudget = 16000,
     this.repeatedCallLimit = 3,
-  });
+    int? maxContextTokens,
+    this.autoCompact = true,
+  }) : maxContextTokens = maxContextTokens ?? provider.capabilities.maxContext;
 
   final LlmProvider provider;
   final String model;
@@ -60,6 +62,13 @@ class AgentLoop {
   /// turn and the previous one) gets a note that it will not change; one
   /// more in the same turn ends the turn.
   final int repeatedCallLimit;
+
+  /// The maximum context size in tokens for the model (e.g. 16384).
+  final int maxContextTokens;
+
+  /// Whether to automatically compact earlier conversation history
+  /// to stay within [maxContextTokens] and recover from 400 context overflow errors.
+  final bool autoCompact;
 
   /// How many earlier user messages steer the toolset with the current one.
   static const int earlierMessages = 3;
@@ -187,6 +196,7 @@ class AgentLoop {
     var badCalls = 0;
     final repeats = _previousTurnCalls(chat);
     final nudged = <String>{};
+    var retriedContextOverflow = false;
     for (var round = 0; round < maxRounds; round++) {
       final assistant = AssistantItem();
       chat.items.add(assistant);
@@ -199,6 +209,11 @@ class AgentLoop {
       final thinkingGuard = RepetitionGuard();
       RepetitionHit? looped;
       var loopedInThinking = false;
+      final toolsTokens = estimateToolsTokens(specs);
+      final maxPromptTokens = (maxContextTokens - 1500).clamp(1000, maxContextTokens);
+      if (autoCompact) {
+        _compactChatHistory(chat, maxPromptTokens: maxPromptTokens, toolsTokens: toolsTokens);
+      }
       await for (final event in provider.stream(LlmRequest(model: model, messages: List.of(chat.history), tools: specs), cancel: roundCancel)) {
         switch (event) {
           case TextDelta(:final text):
@@ -247,6 +262,15 @@ class AgentLoop {
         return;
       }
       if (error != null) {
+        if (autoCompact && !retriedContextOverflow && _isContextOverflowError(error)) {
+          retriedContextOverflow = true;
+          chat.items.remove(assistant);
+          final overflowBudget = (maxContextTokens - 2000).clamp(1000, maxContextTokens);
+          _compactChatHistory(chat, maxPromptTokens: overflowBudget, toolsTokens: toolsTokens, aggressive: true);
+          chat.items.add(NoteItem('Context limit reached: compacted earlier history to continue.'));
+          round--;
+          continue;
+        }
         chat.items.add(NoteItem(error.message, isError: true));
         return;
       }
@@ -438,5 +462,165 @@ class AgentLoop {
   static String titleOf(String text) {
     final line = text.trim().split('\n').first;
     return line.length <= 48 ? line : '${line.substring(0, 47)}…';
+  }
+
+  static bool _isContextOverflowError(LlmError error) {
+    if (error.statusCode != 400 && !error.message.startsWith('400')) return false;
+    final msg = error.message.toLowerCase();
+    return msg.contains('context size') ||
+        msg.contains('context_length_exceeded') ||
+        msg.contains('exceeds the available context') ||
+        msg.contains('maximum context length') ||
+        msg.contains('prompt is too long') ||
+        msg.contains('too many tokens') ||
+        msg.contains('tokens) exceeds');
+  }
+
+  /// Rough token estimate for text (~3.2 chars/token).
+  static int estimateTokens(String text) => text.isEmpty ? 0 : (text.length / 3.2).ceil();
+
+  /// Estimates the prompt tokens for one message including tool calls and framing overhead.
+  static int estimateMessageTokens(LlmMessage m) {
+    var tokens = 4 + estimateTokens(m.content);
+    for (final call in m.toolCalls) {
+      tokens += 4 + estimateTokens(call.name) + estimateTokens(call.argumentsJson);
+    }
+    if (m.toolCallId != null) tokens += 4;
+    if (m.toolName != null) tokens += estimateTokens(m.toolName!);
+    for (final _ in m.images) {
+      tokens += 300;
+    }
+    return tokens;
+  }
+
+  /// Estimates the prompt tokens consumed by tool schemas.
+  static int estimateToolsTokens(List<LlmToolSpec> tools) {
+    var tokens = 0;
+    for (final t in tools) {
+      tokens += 20 + estimateTokens(t.name) + estimateTokens(t.description) + estimateTokens(jsonEncode(t.parameters));
+    }
+    return tokens;
+  }
+
+  /// Compacts [history] so that estimated prompt tokens + [toolsTokens]
+  /// fits within [maxPromptTokens].
+  ///
+  /// Preserves message structure and tool call pairing:
+  /// - Index 0 (system message) is never removed.
+  /// - Older tool results are truncated first.
+  /// - Complete older turns (from user to next user) are pruned if still over budget.
+  /// - In aggressive mode or when a single turn exceeds budget, current turn's
+  ///   tool results are also truncated.
+  static List<LlmMessage> compactHistory(
+    List<LlmMessage> history, {
+    required int maxPromptTokens,
+    int toolsTokens = 0,
+    bool aggressive = false,
+  }) {
+    if (history.isEmpty) return history;
+    final result = List<LlmMessage>.from(history);
+
+    int totalTokens() {
+      var count = toolsTokens;
+      for (final m in result) {
+        count += estimateMessageTokens(m);
+      }
+      return count;
+    }
+
+    if (!aggressive && totalTokens() <= maxPromptTokens) {
+      return result;
+    }
+
+    List<int> userIndices() => [
+      for (var i = 0; i < result.length; i++)
+        if (result[i].role == LlmRole.user) i,
+    ];
+
+    // Pass 1: Truncate tool results from older turns (prior to active turn).
+    var users = userIndices();
+    final activeTurnStart = users.isNotEmpty ? users.last : result.length;
+
+    for (var i = 1; i < activeTurnStart; i++) {
+      final m = result[i];
+      if (m.role == LlmRole.tool) {
+        final threshold = aggressive ? 150 : 300;
+        if (m.content.length > threshold) {
+          result[i] = LlmMessage.toolResult(
+            toolCallId: m.toolCallId ?? '',
+            toolName: m.toolName ?? '',
+            content: '${m.content.substring(0, threshold)}\n… [Output truncated to conserve context]',
+            images: aggressive ? const [] : m.images,
+          );
+        }
+      }
+    }
+
+    if (!aggressive && totalTokens() <= maxPromptTokens) {
+      return result;
+    }
+
+    // Pass 2: Prune complete older turns until within budget or only active turn remains.
+    users = userIndices();
+    while (users.length > 1 && totalTokens() > maxPromptTokens) {
+      final firstTurnStart = users[0];
+      final secondTurnStart = users[1];
+      result.removeRange(firstTurnStart, secondTurnStart);
+      users = userIndices();
+    }
+
+    if (!aggressive && totalTokens() <= maxPromptTokens) {
+      return result;
+    }
+
+    // Pass 3: If still over budget or aggressive, truncate tool results in the active turn.
+    users = userIndices();
+    final currentStart = users.isNotEmpty ? users.last : 1;
+    for (var i = currentStart; i < result.length; i++) {
+      final m = result[i];
+      if (m.role == LlmRole.tool) {
+        final threshold = aggressive ? 150 : 500;
+        if (m.content.length > threshold) {
+          result[i] = LlmMessage.toolResult(
+            toolCallId: m.toolCallId ?? '',
+            toolName: m.toolName ?? '',
+            content: '${m.content.substring(0, threshold)}\n… [Output truncated to conserve context]',
+            images: aggressive ? const [] : m.images,
+          );
+        }
+      }
+    }
+
+    return result;
+  }
+
+  void _compactChatHistory(
+    Chat chat, {
+    required int maxPromptTokens,
+    required int toolsTokens,
+    bool aggressive = false,
+  }) {
+    final compacted = compactHistory(
+      chat.history,
+      maxPromptTokens: maxPromptTokens,
+      toolsTokens: toolsTokens,
+      aggressive: aggressive,
+    );
+    if (compacted.length != chat.history.length || !_sameMessages(compacted, chat.history)) {
+      chat.history
+        ..clear()
+        ..addAll(compacted);
+      chat.changed();
+    }
+  }
+
+  static bool _sameMessages(List<LlmMessage> a, List<LlmMessage> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (!identical(a[i], b[i]) && (a[i].content != b[i].content || a[i].role != b[i].role)) {
+        return false;
+      }
+    }
+    return true;
   }
 }

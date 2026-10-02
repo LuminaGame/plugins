@@ -246,7 +246,7 @@ class ProviderSettings extends ChangeNotifier {
         client: httpClient,
         backend: config.effectiveBackend,
         sampling: config.effectiveSampling,
-        capabilities: LlmCapabilities(tools: config.supportsTools, vision: config.acceptsImages, maxContext: config.local ? 8192 : 128000),
+        capabilities: LlmCapabilities(tools: config.supportsTools, vision: config.acceptsImages, maxContext: config.local ? 16384 : 128000),
       );
 
   /// `sk-…abcd` style, for display.

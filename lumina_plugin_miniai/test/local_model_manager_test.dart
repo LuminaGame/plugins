@@ -31,7 +31,7 @@ void main() {
     expect(m.status, LocalModelStatus.notInstalled);
     final args = m.serverArgs(port: 8123, device: 'Vulkan0');
     expect(args.join(' '), contains('--device Vulkan0'));
-    expect(args, containsAll(['--jinja', '-ngl', '99', '-c', '8192', '--min-p', '0.0']));
+    expect(args, containsAll(['--jinja', '-ngl', '99', '-c', '16384', '--min-p', '0.0']));
     expect(args.join(' '), contains('--host 127.0.0.1 --port 8123 --alias MiniCPM5-2B-Q4_K_M'));
     expect(args[1], endsWith('models/MiniCPM5-2B-Q4_K_M.gguf'));
     m.dispose();
@@ -59,6 +59,8 @@ void main() {
     final a = LocalModelManager(root: temp.path, storage: storage, environment: const {});
     await a.selectVariant(ModelVariant.minicpm5_1bQ4);
     await a.selectGpu('RTX PRO 2000');
+    await a.setContextSize(8192);
+    await a.setAutoCompact(false);
     a.autostart = false;
     await a.saveSettings();
     a.dispose();
@@ -67,6 +69,8 @@ void main() {
     await b.load();
     expect(b.variant, ModelVariant.minicpm5_1bQ4);
     expect(b.gpuName, 'RTX PRO 2000');
+    expect(b.contextSize, 8192);
+    expect(b.autoCompact, isFalse);
     expect(b.autostart, isFalse);
     b.dispose();
   });

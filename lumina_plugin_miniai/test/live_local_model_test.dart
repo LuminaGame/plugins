@@ -34,7 +34,7 @@ void main() {
     process = await Process.start(_server.path, [
       '-m', _model.path,
       if (device != null) ...['--device', device],
-      '-ngl', '99', '-c', '8192', '--jinja', '--min-p', '0.0',
+      '-ngl', '99', '-c', '16384', '--jinja', '--min-p', '0.0',
       '--host', '127.0.0.1', '--port', '$port', '--alias', 'MiniCPM5-2B-Q4_K_M',
     ]);
     process!.stdout.drain<void>();

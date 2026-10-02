@@ -89,6 +89,16 @@ class LocalModelManager extends ChangeNotifier {
   /// Start the server when a message is sent to the local provider.
   bool autostart = true;
 
+  /// The default context size passed to llama-server (-c).
+  static const int defaultContextSize = 16384;
+
+  /// The context size passed to llama-server (-c).
+  int contextSize = defaultContextSize;
+
+  /// Automatically compact conversation history when approaching context size
+  /// or when a context overflow error occurs.
+  bool autoCompact = true;
+
   late LocalModelStatus status;
 
   /// Why the last install / start failed, or how the server died.
@@ -141,13 +151,35 @@ class LocalModelManager extends ChangeNotifier {
       variant = ModelVariant.byId(data['variant'] as String?);
       gpuName = data['gpu'] as String?;
       autostart = data['autostart'] as bool? ?? true;
+      contextSize = data['contextSize'] as int? ?? defaultContextSize;
+      autoCompact = data['autoCompact'] as bool? ?? true;
     }
     if (!isRunning && status != LocalModelStatus.downloading) _refreshInstalled();
     notifyListeners();
   }
 
   Future<void> saveSettings() async {
-    await storage?.writeJson('local', {'variant': variant.id, if (gpuName != null) 'gpu': gpuName, 'autostart': autostart});
+    await storage?.writeJson('local', {
+      'variant': variant.id,
+      if (gpuName != null) 'gpu': gpuName,
+      'autostart': autostart,
+      'contextSize': contextSize,
+      'autoCompact': autoCompact,
+    });
+  }
+
+  Future<void> setContextSize(int next) async {
+    if (isRunning || isBusy || next == contextSize) return;
+    contextSize = next;
+    notifyListeners();
+    await saveSettings();
+  }
+
+  Future<void> setAutoCompact(bool next) async {
+    if (next == autoCompact) return;
+    autoCompact = next;
+    notifyListeners();
+    await saveSettings();
   }
 
   /// Picks [next] (not while the server runs or downloads).
@@ -308,7 +340,7 @@ class LocalModelManager extends ChangeNotifier {
     '-ngl',
     '99',
     '-c',
-    '8192',
+    '$contextSize',
     '--jinja',
     '--min-p',
     '0.0',
