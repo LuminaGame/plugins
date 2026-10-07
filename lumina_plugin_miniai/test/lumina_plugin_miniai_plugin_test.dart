@@ -9,6 +9,10 @@ import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:lumina_plugin_miniai/lumina_plugin_miniai.dart';
 
 class _TestEditorContext implements LuminaEditorContext {
+  @override
+  PluginProcessChannel processChannel(String pluginName) => PluginProcessChannel.detached(pluginName);
+  @override
+  void reportCrash(Object error, StackTrace? stack, {String? plugin, String? context}) {}
   final Map<String, (EditorCommand, EditorMenuItemOptions)> menu = {};
   final List<EditorPanelDescriptor> registeredPanels = [];
   final List<EditorSlotButton> slotButtons = [];

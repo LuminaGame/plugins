@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'agent/chat.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat.dart';
 
 /// A tool card's arguments or result: JSON pretty-printed and coloured,
 /// anything else as plain text, in a box at most [maxHeight] tall that

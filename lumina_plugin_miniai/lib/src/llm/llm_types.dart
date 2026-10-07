@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'chat_image.dart';
+import 'package:lumina_plugin_miniai/src/llm/chat_image.dart';
 
 export 'chat_image.dart';
 

@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'agent/chat.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat.dart';
 
 /// Three dots that cycle (`.`, `..`, `...`) while a model works.
 class ThinkingDots extends StatefulWidget {

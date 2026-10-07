@@ -6,21 +6,21 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import 'agent/agent_loop.dart';
-import 'agent/approval.dart';
-import 'agent/chat.dart';
-import 'agent/chat_store.dart';
-import 'agent/toolset_selector.dart';
-import 'claude_code/claude_code_agent.dart';
-import 'claude_code/claude_code_cli.dart';
-import 'claude_code/claude_code_protocol.dart';
-import 'context/editor_context.dart';
-import 'context/selection_watcher.dart';
-import 'llm/llm_types.dart';
-import 'llm/sampling.dart';
-import 'local/local_model_manager.dart';
-import 'settings/miniai_project_settings.dart';
-import 'settings/provider_settings.dart';
+import 'package:lumina_plugin_miniai/src/agent/agent_loop.dart';
+import 'package:lumina_plugin_miniai/src/agent/approval.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat_store.dart';
+import 'package:lumina_plugin_miniai/src/agent/toolset_selector.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_agent.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_cli.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_protocol.dart';
+import 'package:lumina_plugin_miniai/src/context/editor_context.dart';
+import 'package:lumina_plugin_miniai/src/context/selection_watcher.dart';
+import 'package:lumina_plugin_miniai/src/llm/llm_types.dart';
+import 'package:lumina_plugin_miniai/src/llm/sampling.dart';
+import 'package:lumina_plugin_miniai/src/local/local_model_manager.dart';
+import 'package:lumina_plugin_miniai/src/settings/miniai_project_settings.dart';
+import 'package:lumina_plugin_miniai/src/settings/provider_settings.dart';
 
 /// MiniAI's state for one editor session: the provider settings,
 /// the current chat and the running turn.

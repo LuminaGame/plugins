@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'claude_code_cli.dart';
-import 'claude_code_protocol.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_cli.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_protocol.dart';
 
 /// One long-lived headless `claude` process: a chat's conversation. It keeps
 /// the context between messages; a new process continues a stored session

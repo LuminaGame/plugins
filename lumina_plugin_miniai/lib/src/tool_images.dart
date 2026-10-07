@@ -1,6 +1,6 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'llm/chat_image.dart';
+import 'package:lumina_plugin_miniai/src/llm/chat_image.dart';
 
 /// The images a tool call returned, as a row of small thumbnails; a click
 /// opens one full size.

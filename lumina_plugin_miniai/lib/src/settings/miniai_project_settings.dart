@@ -1,8 +1,8 @@
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../agent/agent_loop.dart';
-import '../agent/approval.dart';
+import 'package:lumina_plugin_miniai/src/agent/agent_loop.dart';
+import 'package:lumina_plugin_miniai/src/agent/approval.dart';
 
 /// Project Settings ▸ Plugins ▸ AI Assistant:
 /// MiniAI's settings shared with the project

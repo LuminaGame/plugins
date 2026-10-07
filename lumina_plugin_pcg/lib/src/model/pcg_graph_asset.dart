@@ -5,7 +5,7 @@ import 'dart:typed_data';
 import 'package:lumina/data/models/lumina_asset.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import 'pcg_graph.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_graph.dart';
 
 /// The `.lmas` container of a PCG Graph.
 ///

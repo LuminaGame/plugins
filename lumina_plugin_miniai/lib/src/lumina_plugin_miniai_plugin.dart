@@ -4,14 +4,14 @@ import 'dart:convert';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'api_keys_dialog.dart';
-import 'chat_panel.dart';
-import 'claude_code/claude_code_agent.dart';
-import 'connect/connect_agents_dialog.dart';
-import 'miniai_button_state.dart';
-import 'miniai_controller.dart';
-import 'settings/miniai_project_settings.dart';
-import 'settings/provider_settings.dart';
+import 'package:lumina_plugin_miniai/src/api_keys_dialog.dart';
+import 'package:lumina_plugin_miniai/src/chat_panel.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_agent.dart';
+import 'package:lumina_plugin_miniai/src/connect/connect_agents_dialog.dart';
+import 'package:lumina_plugin_miniai/src/miniai_button_state.dart';
+import 'package:lumina_plugin_miniai/src/miniai_controller.dart';
+import 'package:lumina_plugin_miniai/src/settings/miniai_project_settings.dart';
+import 'package:lumina_plugin_miniai/src/settings/provider_settings.dart';
 
 /// MiniAI: the ✦ AI toolbar button and the AI Assistant right-dock panel,
 /// with the model providers, the agent loop and per-project chat storage.

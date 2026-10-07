@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'mcp_client_config.dart';
+import 'package:lumina_plugin_miniai/src/connect/mcp_client_config.dart';
 
 /// Plugins ▸ MiniAI ▸ Connect External Agents…: registers the
 /// editor's MCP server with Antigravity and Claude Code.

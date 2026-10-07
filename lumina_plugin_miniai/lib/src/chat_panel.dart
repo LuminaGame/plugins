@@ -2,19 +2,19 @@ import 'package:flutter/services.dart' show LogicalKeyboardKey, HardwareKeyboard
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'agent/approval.dart';
-import 'agent/chat.dart';
-import 'claude_code/claude_code_protocol.dart';
-import 'context/editor_context.dart';
-import 'history_view.dart';
-import 'local/local_model_manager.dart';
-import 'local_model_section.dart';
-import 'markdown_view.dart';
-import 'miniai_controller.dart';
-import 'provider_dialog.dart';
-import 'thinking_row.dart';
-import 'tool_card_parts.dart';
-import 'tool_images.dart';
+import 'package:lumina_plugin_miniai/src/agent/approval.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_protocol.dart';
+import 'package:lumina_plugin_miniai/src/context/editor_context.dart';
+import 'package:lumina_plugin_miniai/src/history_view.dart';
+import 'package:lumina_plugin_miniai/src/local/local_model_manager.dart';
+import 'package:lumina_plugin_miniai/src/local_model_section.dart';
+import 'package:lumina_plugin_miniai/src/markdown_view.dart';
+import 'package:lumina_plugin_miniai/src/miniai_controller.dart';
+import 'package:lumina_plugin_miniai/src/provider_dialog.dart';
+import 'package:lumina_plugin_miniai/src/thinking_row.dart';
+import 'package:lumina_plugin_miniai/src/tool_card_parts.dart';
+import 'package:lumina_plugin_miniai/src/tool_images.dart';
 
 /// The AI Assistant panel, right-docked as `miniai.chat`: the
 /// chat title, mode and model; the conversation with tool-call and approval

@@ -1,10 +1,10 @@
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import '../eval/pcg_evaluator.dart';
-import '../model/pcg_graph.dart';
-import '../model/pcg_graph_asset.dart';
-import '../model/pcg_surface.dart';
-import 'pcg_volume.dart';
+import 'package:lumina_plugin_pcg/src/eval/pcg_evaluator.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_graph.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_graph_asset.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_surface.dart';
+import 'package:lumina_plugin_pcg/src/volume/pcg_volume.dart';
 
 /// What one Generate did.
 class PcgGenerateReport {

@@ -1,6 +1,6 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'llm/sampling.dart';
+import 'package:lumina_plugin_miniai/src/llm/sampling.dart';
 
 /// "Advanced / Sampling": a provider's server type and sampling settings,
 /// collapsed until opened. Empty fields are not sent (the server's defaults

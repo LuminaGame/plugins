@@ -6,8 +6,8 @@ import 'package:archive/archive_io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import 'downloader.dart';
-import 'local_catalog.dart';
+import 'package:lumina_plugin_miniai/src/local/downloader.dart';
+import 'package:lumina_plugin_miniai/src/local/local_catalog.dart';
 
 /// Where the local model is in its life.
 enum LocalModelStatus { notInstalled, downloading, installed, starting, ready, crashed, stopped, failed }

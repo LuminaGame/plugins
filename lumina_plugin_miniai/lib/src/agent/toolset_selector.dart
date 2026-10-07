@@ -1,8 +1,8 @@
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import '../llm/llm_types.dart';
-import 'approval.dart';
-import 'lumina_primer.dart';
+import 'package:lumina_plugin_miniai/src/llm/llm_types.dart';
+import 'package:lumina_plugin_miniai/src/agent/approval.dart';
+import 'package:lumina_plugin_miniai/src/agent/lumina_primer.dart';
 
 /// Picks the few tool groups a request needs: a small model
 /// cannot use 100+ tools, so it gets the groups its words point at, plus

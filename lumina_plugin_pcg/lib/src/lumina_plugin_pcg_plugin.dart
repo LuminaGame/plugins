@@ -6,12 +6,12 @@ import 'package:lumina/data/models/lumina_asset.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'model/pcg_graph.dart';
-import 'model/pcg_graph_asset.dart';
-import 'ui/pcg_graph_editor.dart';
-import 'ui/pcg_volume_details.dart';
-import 'volume/pcg_volume.dart';
-import 'volume/pcg_volume_service.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_graph.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_graph_asset.dart';
+import 'package:lumina_plugin_pcg/src/ui/pcg_graph_editor.dart';
+import 'package:lumina_plugin_pcg/src/ui/pcg_volume_details.dart';
+import 'package:lumina_plugin_pcg/src/volume/pcg_volume.dart';
+import 'package:lumina_plugin_pcg/src/volume/pcg_volume_service.dart';
 
 /// Procedural Content Generation for Lumina Studio.
 ///

@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart' show LucideIcons;
 
-import 'local/local_model_manager.dart';
-import 'miniai_controller.dart';
+import 'package:lumina_plugin_miniai/src/local/local_model_manager.dart';
+import 'package:lumina_plugin_miniai/src/miniai_controller.dart';
 
 /// The ✦ AI toolbar button's live state: active while the
 /// chat panel is open; busy while a turn runs; a badge with the approvals

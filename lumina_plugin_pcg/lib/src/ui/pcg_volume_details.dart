@@ -3,10 +3,10 @@ import 'dart:math' as math;
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import '../model/pcg_graph_asset.dart';
-import '../volume/pcg_volume.dart';
-import '../volume/pcg_volume_service.dart';
-import 'pcg_fields.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_graph_asset.dart';
+import 'package:lumina_plugin_pcg/src/volume/pcg_volume.dart';
+import 'package:lumina_plugin_pcg/src/volume/pcg_volume_service.dart';
+import 'package:lumina_plugin_pcg/src/ui/pcg_fields.dart';
 
 /// The `PCG` section of the Details panel for a selected PCG Volume:
 /// graph, seed, size, instance count, Generate / Cleanup / Edit Graph.

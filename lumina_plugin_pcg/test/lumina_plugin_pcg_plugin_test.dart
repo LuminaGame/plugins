@@ -11,6 +11,10 @@ import 'package:lumina_plugin_pcg/lumina_plugin_pcg.dart';
 import 'test_support.dart';
 
 class _TestEditorContext implements LuminaEditorContext {
+  @override
+  PluginProcessChannel processChannel(String pluginName) => PluginProcessChannel.detached(pluginName);
+  @override
+  void reportCrash(Object error, StackTrace? stack, {String? plugin, String? context}) {}
   final List<String> registeredMenuPaths = [];
   final List<EditorCommand> registeredCommands = [];
   final List<EditorPanelDescriptor> registeredPanels = [];

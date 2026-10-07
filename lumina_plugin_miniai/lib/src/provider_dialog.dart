@@ -1,13 +1,13 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'claude_code_section.dart';
-import 'llm/chat_image.dart';
-import 'llm/openai_compat_provider.dart';
-import 'llm/sampling.dart';
-import 'local_model_section.dart';
-import 'miniai_controller.dart';
-import 'sampling_section.dart';
-import 'settings/provider_settings.dart';
+import 'package:lumina_plugin_miniai/src/claude_code_section.dart';
+import 'package:lumina_plugin_miniai/src/llm/chat_image.dart';
+import 'package:lumina_plugin_miniai/src/llm/openai_compat_provider.dart';
+import 'package:lumina_plugin_miniai/src/llm/sampling.dart';
+import 'package:lumina_plugin_miniai/src/local_model_section.dart';
+import 'package:lumina_plugin_miniai/src/miniai_controller.dart';
+import 'package:lumina_plugin_miniai/src/sampling_section.dart';
+import 'package:lumina_plugin_miniai/src/settings/provider_settings.dart';
 
 /// Model provider…: an OpenAI-compatible endpoint — a local
 /// llama-server / Ollama / LM Studio, or a cloud API — with its model and an

@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import '../llm/llm_types.dart';
-import 'approval.dart';
+import 'package:lumina_plugin_miniai/src/llm/llm_types.dart';
+import 'package:lumina_plugin_miniai/src/agent/approval.dart';
 
 enum ToolCallStatus { waitingApproval, waitingAnswer, running, done, failed, denied }
 

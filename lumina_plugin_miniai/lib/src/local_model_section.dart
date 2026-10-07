@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'llm/sampling.dart';
-import 'local/local_catalog.dart';
-import 'local/local_model_manager.dart';
-import 'miniai_controller.dart';
-import 'sampling_section.dart';
-import 'settings/provider_settings.dart';
+import 'package:lumina_plugin_miniai/src/llm/sampling.dart';
+import 'package:lumina_plugin_miniai/src/local/local_catalog.dart';
+import 'package:lumina_plugin_miniai/src/local/local_model_manager.dart';
+import 'package:lumina_plugin_miniai/src/miniai_controller.dart';
+import 'package:lumina_plugin_miniai/src/sampling_section.dart';
+import 'package:lumina_plugin_miniai/src/settings/provider_settings.dart';
 
 /// Local model (recommended): pick a MiniCPM5 variant, download
 /// it with llama.cpp, start / stop / restart it on a GPU, and see its state.

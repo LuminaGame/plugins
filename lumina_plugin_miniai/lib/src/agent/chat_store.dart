@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-import 'chat.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat.dart';
 
 /// One History row (the index entry of a stored chat).
 @immutable

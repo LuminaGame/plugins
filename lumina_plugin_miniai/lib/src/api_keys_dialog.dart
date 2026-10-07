@@ -1,6 +1,6 @@
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'settings/provider_settings.dart';
+import 'package:lumina_plugin_miniai/src/settings/provider_settings.dart';
 
 /// Plugins ▸ MiniAI ▸ API Keys…: every provider's key source and
 /// the stored keys, masked, with Remove.

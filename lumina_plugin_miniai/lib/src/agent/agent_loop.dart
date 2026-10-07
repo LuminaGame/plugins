@@ -3,14 +3,14 @@ import 'dart:convert';
 
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import '../claude_code/claude_code_agent.dart' show ClaudeCodePermissions;
-import '../llm/llm_types.dart';
-import '../context/editor_context.dart';
-import 'approval.dart';
-import 'chat.dart';
-import 'lumina_primer.dart';
-import 'repetition_guard.dart';
-import 'toolset_selector.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_agent.dart' show ClaudeCodePermissions;
+import 'package:lumina_plugin_miniai/src/llm/llm_types.dart';
+import 'package:lumina_plugin_miniai/src/context/editor_context.dart';
+import 'package:lumina_plugin_miniai/src/agent/approval.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat.dart';
+import 'package:lumina_plugin_miniai/src/agent/lumina_primer.dart';
+import 'package:lumina_plugin_miniai/src/agent/repetition_guard.dart';
+import 'package:lumina_plugin_miniai/src/agent/toolset_selector.dart';
 
 /// Groups a turn's level edits into one undo step (`EditorLevelAccess.runTransaction`).
 typedef TurnTransaction = Future<void> Function(String label, Future<void> Function() body);

@@ -4,16 +4,16 @@ import 'dart:io';
 
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import '../agent/agent_loop.dart';
-import '../agent/approval.dart';
-import '../agent/chat.dart';
-import '../agent/lumina_primer.dart';
-import '../llm/llm_types.dart';
-import 'claude_code_cli.dart';
-import 'claude_code_protocol.dart';
-import 'claude_code_session.dart';
-import '../context/editor_context.dart';
-import '../agent/toolset_selector.dart';
+import 'package:lumina_plugin_miniai/src/agent/agent_loop.dart';
+import 'package:lumina_plugin_miniai/src/agent/approval.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat.dart';
+import 'package:lumina_plugin_miniai/src/agent/lumina_primer.dart';
+import 'package:lumina_plugin_miniai/src/llm/llm_types.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_cli.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_protocol.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_session.dart';
+import 'package:lumina_plugin_miniai/src/context/editor_context.dart';
+import 'package:lumina_plugin_miniai/src/agent/toolset_selector.dart';
 
 /// MiniAI's tool that answers Claude Code's permission requests, as the
 /// plugin registers it and as the CLI names it.

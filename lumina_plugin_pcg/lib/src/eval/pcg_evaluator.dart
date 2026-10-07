@@ -2,10 +2,10 @@ import 'dart:math' as math;
 
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import '../model/pcg_graph.dart';
-import '../model/pcg_point.dart';
-import '../model/pcg_surface.dart';
-import 'pcg_random.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_graph.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_point.dart';
+import 'package:lumina_plugin_pcg/src/model/pcg_surface.dart';
+import 'package:lumina_plugin_pcg/src/eval/pcg_random.dart';
 
 /// The box a PCG Volume covers, in stored space (cm, Z up): centre and full
 /// extents (the actor's size × its scale).

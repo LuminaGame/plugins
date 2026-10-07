@@ -3,8 +3,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import 'llm_types.dart';
-import 'sampling.dart';
+import 'package:lumina_plugin_miniai/src/llm/llm_types.dart';
+import 'package:lumina_plugin_miniai/src/llm/sampling.dart';
 
 /// Any `/v1/chat/completions` server: a local `llama-server`
 /// with MiniCPM5, Ollama, LM Studio, vLLM, OpenRouter, OpenAI.

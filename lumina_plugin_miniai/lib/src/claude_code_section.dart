@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'claude_code/claude_code_cli.dart';
-import 'claude_code/claude_code_protocol.dart';
-import 'miniai_controller.dart';
-import 'settings/provider_settings.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_cli.dart';
+import 'package:lumina_plugin_miniai/src/claude_code/claude_code_protocol.dart';
+import 'package:lumina_plugin_miniai/src/miniai_controller.dart';
+import 'package:lumina_plugin_miniai/src/settings/provider_settings.dart';
 
 /// Model provider… ▸ Claude Code: the detected `claude` (path, version,
 /// login), the model, and **Use Claude Code**. No key: the CLI's own login

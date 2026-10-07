@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 
-import 'agent/chat_store.dart';
-import 'miniai_controller.dart';
+import 'package:lumina_plugin_miniai/src/agent/chat_store.dart';
+import 'package:lumina_plugin_miniai/src/miniai_controller.dart';
 
 /// "just now" / "5 min ago" / "3 h ago" / "2 d ago" / the date.
 String relativeTime(DateTime at, {DateTime? now}) {

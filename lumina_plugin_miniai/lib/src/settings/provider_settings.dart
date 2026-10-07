@@ -4,9 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import '../llm/llm_types.dart';
-import '../llm/openai_compat_provider.dart';
-import '../llm/sampling.dart';
+import 'package:lumina_plugin_miniai/src/llm/llm_types.dart';
+import 'package:lumina_plugin_miniai/src/llm/openai_compat_provider.dart';
+import 'package:lumina_plugin_miniai/src/llm/sampling.dart';
 
 /// What drives a provider.
 enum ProviderKind {

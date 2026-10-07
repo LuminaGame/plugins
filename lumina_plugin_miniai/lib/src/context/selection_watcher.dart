@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
-import '../agent/toolset_selector.dart';
-import 'editor_context.dart';
+import 'package:lumina_plugin_miniai/src/agent/toolset_selector.dart';
+import 'package:lumina_plugin_miniai/src/context/editor_context.dart';
 
 /// The editor selection while the chat panel is on screen: re-read with
 /// the host's `get_selection` tool on every level change and once per
