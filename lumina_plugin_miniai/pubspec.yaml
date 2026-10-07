@@ -16,7 +16,7 @@ dependencies:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina_editor_api
-      ref: 1da1433f0d7478a8591a4356f793bd68a82a5084
+      ref: 87ca08bec43927031cb16a4297336d4d96389e35
   shadcn_flutter: 0.0.55
   # The provider's HTTP + SSE client (the host resolves ^1.6.0).
   http: ^1.6.0
@@ -35,7 +35,7 @@ dev_dependencies:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina_core
-      ref: 1da1433f0d7478a8591a4356f793bd68a82a5084
+      ref: 87ca08bec43927031cb16a4297336d4d96389e35
   flutter_lints: ^6.0.0
   test: ^1.24.0
 
