@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:lumina/data/models/lumina_asset.dart';
+import 'package:lumina_core/lumina_core.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
 

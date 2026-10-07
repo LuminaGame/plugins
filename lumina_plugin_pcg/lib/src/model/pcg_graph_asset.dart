@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:lumina/data/models/lumina_asset.dart';
+import 'package:lumina_core/lumina_core.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
 import 'package:lumina_plugin_pcg/src/model/pcg_graph.dart';

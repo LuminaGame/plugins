@@ -1,7 +1,6 @@
 import 'dart:io';
 
-import 'package:lumina/data/models/landscape_data.dart';
-import 'package:lumina/data/models/lumina_asset.dart';
+import 'package:lumina_core/lumina_core.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 
 /// The surface a PCG Volume samples: height and slope at a stored-space

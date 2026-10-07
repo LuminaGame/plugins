@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lumina/data/models/landscape_data.dart';
+import 'package:lumina_core/lumina_core.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:lumina_plugin_pcg/lumina_plugin_pcg.dart';
 
