@@ -107,6 +107,8 @@ flutter test
 
 Sampler determinism, filters, difference, spawner weights, seed reproducibility, landscape projection against a real `LandscapeData` heightmap, the volume service over a real level file with real barrel models from `test-assets/`, the pack script, and widget tests for the Details section and the graph editor.
 
+`test/architecture/process_part_reach_test.dart` checks that the plugin has no process part: it runs inside the editor's process (no `process_class`, no `"isolation": "process"`). An isolated plugin lists there which packages its process part may import (see the `create-plugin` skill).
+
 ## License
 
 MIT (see [LICENSE](LICENSE)). Use it as a template for your own plugins.

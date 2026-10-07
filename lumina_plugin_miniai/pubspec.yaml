@@ -29,12 +29,12 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  # The manifest test parses lumina_plugin_miniai.lmplugin with lumina's own
+  # The manifest test parses lumina_plugin_miniai.lmplugin with lumina_core's
   # PluginRepository (the plugin itself depends on the API only).
-  lumina:
+  lumina_core:
     git:
       url: https://github.com/LuminaGame/lumina.git
-      path: lumina
+      path: lumina_core
       ref: 1da1433f0d7478a8591a4356f793bd68a82a5084
   flutter_lints: ^6.0.0
   test: ^1.24.0

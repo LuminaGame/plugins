@@ -107,6 +107,8 @@ flutter test --concurrency=1
 
 Agent loop test'leri `test/fixtures/sse/` altındaki gerçek `/v1/chat/completions` SSE stream'lerini replay eder. `dart run tool/record_sse.dart <base url> <model>` çalışan bir OpenAI-compatible server'dan yenilerini kaydeder. Claude Code test'leri `test/fixtures/claude_code/` altındaki gerçek session'ları `claude` yerine geçen bir subprocess ile replay eder. `dart tool/record_claude_code.dart --project <dir> --bridge <lumina_ui/bin/lumina_mcp_bridge.dart>` kurulu CLI'ınızla yenilerini kaydeder (girişiniz üzerinden birkaç ucuz `haiku` çağrısı; editor'ün connection dosyası `--config-dir` içinde); hesabı, path'leri ve kendi command'lerinizi bunlardan çıkarır. `test/live_claude_code_test.dart` gerçek CLI üzerinden tek bir küçük prompt gönderir; giriş yapılmış bir `claude` yoksa skip edilir. Live test'ler (`test/live_local_model_test.dart`, `test/live_local_manager_test.dart`) gerçek bir llama-server ve MiniCPM5 ile çalışır; ikisi de Lumina'nın data klasöründeki `miniai/` altında kurulu değilse skip edilir. Hepsi aynı server'ı paylaştığı için test'ler `--concurrency=1` ile çalışır (`melos run test` de öyle yapar).
 
+`test/architecture/process_part_reach_test.dart` plugin'in bir süreç bölümü olmadığını doğrular: editörün kendi sürecinde çalışır (`process_class` ve `"isolation": "process"` yok). İzole bir plugin aynı dosyada süreç bölümünün hangi paketleri import edebileceğini listeler (`create-plugin` skill'ine bakın).
+
 Plugin'i marketplace için `dart run tool/pack_plugin.dart` ile paketleyin (`build/pack/lumina_plugin_miniai-<version>.zip`); seçenekleri için [repo README'sine](../README.tr.md#pluginimarketplace-için-paketlemek) bakın.
 
 ## Lisans

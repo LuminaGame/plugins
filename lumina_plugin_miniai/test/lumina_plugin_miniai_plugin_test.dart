@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lumina/lumina.dart' show PluginRepository, PluginOrigin;
+import 'package:lumina_core/lumina_core.dart' show PluginRepository, PluginOrigin;
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:lumina_plugin_miniai/lumina_plugin_miniai.dart';
 

@@ -107,6 +107,8 @@ flutter test
 
 Sampler determinism'i, filter'lar, difference, spawner ağırlıkları, seed tekrarlanabilirliği, gerçek bir `LandscapeData` heightmap'ine projeksiyon, `test-assets/` içindeki gerçek barrel modelleriyle gerçek bir level dosyası üzerinde volume servisi, pack script'i ve Details bölümü ile graph editor'ü için widget test'leri.
 
+`test/architecture/process_part_reach_test.dart` plugin'in bir süreç bölümü olmadığını doğrular: editörün kendi sürecinde çalışır (`process_class` ve `"isolation": "process"` yok). İzole bir plugin aynı dosyada süreç bölümünün hangi paketleri import edebileceğini listeler (`create-plugin` skill'ine bakın).
+
 ## Lisans
 
 MIT (bkz. [LICENSE](LICENSE)). Kendi plugin'leriniz için template olarak kullanabilirsiniz.

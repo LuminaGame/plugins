@@ -109,6 +109,8 @@ The agent loop tests replay real `/v1/chat/completions` SSE streams from `test/f
 
 The Claude Code tests replay real sessions from `test/fixtures/claude_code/` through a subprocess that stands in for `claude`. `dart tool/record_claude_code.dart --project <dir> --bridge <lumina_ui/bin/lumina_mcp_bridge.dart>` records new ones with your installed CLI (a handful of cheap `haiku` calls on your login; the editor's connection file in `--config-dir`); it removes the account, paths and your own commands from them. `test/live_claude_code_test.dart` sends one tiny prompt through the real CLI and is skipped without a logged-in `claude`. The live tests (`test/live_local_model_test.dart`, `test/live_local_manager_test.dart`) run against a real llama-server and MiniCPM5 and are skipped unless both are installed in `miniai/` of Lumina's data directory. They share that one server, which is why the tests run with `--concurrency=1` (as `melos run test` does).
 
+`test/architecture/process_part_reach_test.dart` checks that the plugin has no process part: it runs inside the editor's process (no `process_class`, no `"isolation": "process"`). An isolated plugin lists there which packages its process part may import (see the `create-plugin` skill).
+
 Pack the plugin for the marketplace with `dart run tool/pack_plugin.dart` (`build/pack/lumina_plugin_miniai-<version>.zip`); see the [repository README](../README.md#packing-a-plugin-for-the-marketplace) for its options.
 
 ## License
