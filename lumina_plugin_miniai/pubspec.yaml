@@ -40,3 +40,5 @@ dev_dependencies:
   test: ^1.24.0
 
 flutter:
+  assets:
+    - resources/vllm_runtime.py

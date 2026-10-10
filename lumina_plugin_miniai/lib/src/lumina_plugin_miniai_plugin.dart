@@ -176,6 +176,7 @@ class LuminaPluginMiniaiPlugin extends LuminaEditorPlugin {
   Future<void> onEditorShutdown() async {
     await _controller?.claude.close();
     await _controller?.local.stop();
+    await _controller?.vllm.stop();
   }
 
   @override

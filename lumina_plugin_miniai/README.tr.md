@@ -36,7 +36,43 @@ Chat'ler projeyle birlikte `.lumina/plugins/lumina_plugin_miniai/` altında sakl
 
 Provider dialog'unu paneldeki model chip'inden açın (**Set up a model provider…**).
 
-### Local model (önerilen)
+### vllm.cpp ile Gemma 4 E4B
+
+Provider penceresinde ayrı bir Gemma kartı bulunur. **Connect & use**, endpoint'in
+`gemma-4-E4B-it` modelini sunduğunu doğruladıktan sonra onu seçer. **Start**, pluginin
+sahip olduğu sunucuyu başlatır; başlatma hataları sohbet içinde de gösterilir.
+LAN endpoint'i seçildiğinde yerel süreç başlatılmaz. Yönetilen bağlam 4096 tokendir.
+
+Windows'ta yerel `vllm-server.exe` ve Hugging Face model klasörü ayarlanabilir.
+Visual Studio 2022 C++/CMake araçlarıyla sabitlenmiş kaynağı derleyin:
+
+```powershell
+python tool/build_vllm_windows.py --source <vllm.cpp-klasoru> --jobs 8
+```
+
+Kaynak `6d33ea819debc3c52a068e1d24854ab92c2a85b6` commit'inde olmalıdır.
+Derleme MSVC ve Vulkan kullanır; `%LOCALAPPDATA%/Lumina/vllm_native/runtime` altına
+kurulur. Kartta oluşan `bin/vllm-server.exe` dosyasını ve Gemma model klasörünü
+ayarlayın. Yerel executable ayarlandığında **Install**, sabitlenmiş
+`unsloth/gemma-4-E4B-it` ağırlıklarını indirir. Ağırlıklar yaklaşık 15 GB disk alanı
+gerektirir. Kartların sırası değişebildiği için CUDA ve yerel Vulkan GPU indeksleri
+ayrıdır. Metin ve araç çağrıları Gemma parser'ını kullanır; resim ekleri kapalıdır.
+
+Yerel CPU ile metin üretimi ve yapılandırılmış araç çağrıları doğrulandı. Yerel
+cihazın varsayılanı CPU'dur. Vulkan derlemesi modeli yükledi fakat test edilen
+RTX PRO 2000 üzerinde üretimde `vkAllocateMemory` hatası verdi; bu nedenle `auto`
+isteğe bağlı cihaz seçimidir. Windows derleme adaptörü, `main()` öncesindeki
+başlangıç hatasını engellemek için Qwen3.5 kaydını Tev1 alias'ından önce çalıştırır.
+Upstream kaynak dosyaları değiştirilmez. Açık olan uyumlu sunucu tekrar kullanılır;
+**Stop** yalnızca bu yönetici tarafından başlatılmış sunucuyu kapatır.
+
+Yerel executable alanı boşsa Windows, Ubuntu WSL ve yayımlanmış Linux paketini
+kullanır. Eski `v0.0.2` paketi Gemma CUDA üretiminde
+`GeluMulSeparate: ROCm-only fast path` hatası verir; Gemma için güncel yerel
+derlemeyi kullanın. Kurulum ve inference hataları gösterilir; doğrulanmamış
+bağlantı seçili provider'ın yerine geçirilmez.
+
+### llama.cpp ile MiniCPM5
 
 Tek tıkla şunlar indirilip kurulur:
 

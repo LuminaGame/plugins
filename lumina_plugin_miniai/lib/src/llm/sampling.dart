@@ -10,6 +10,7 @@ enum ServerBackend {
   llamaCpp('llama-server (llama.cpp)'),
   unslothStudio('Unsloth Studio'),
   vllm('vLLM'),
+  vllmCpp('vllm.cpp'),
   ollama('Ollama'),
   lmStudio('LM Studio'),
   openRouter('OpenRouter'),
@@ -171,7 +172,7 @@ class SamplingSettings {
     switch (backend) {
       case ServerBackend.llamaCpp:
         return name;
-      case ServerBackend.unslothStudio || ServerBackend.vllm || ServerBackend.openRouter:
+      case ServerBackend.unslothStudio || ServerBackend.vllm || ServerBackend.vllmCpp || ServerBackend.openRouter:
         if (name == repeatPenalty) return 'repetition_penalty';
         return standard.contains(name) || name == topK || name == minP ? name : null;
       case ServerBackend.lmStudio:

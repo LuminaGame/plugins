@@ -5,6 +5,7 @@ import 'package:lumina_plugin_miniai/src/llm/chat_image.dart';
 import 'package:lumina_plugin_miniai/src/llm/openai_compat_provider.dart';
 import 'package:lumina_plugin_miniai/src/llm/sampling.dart';
 import 'package:lumina_plugin_miniai/src/local_model_section.dart';
+import 'package:lumina_plugin_miniai/src/vllm_section.dart';
 import 'package:lumina_plugin_miniai/src/miniai_controller.dart';
 import 'package:lumina_plugin_miniai/src/sampling_section.dart';
 import 'package:lumina_plugin_miniai/src/settings/provider_settings.dart';
@@ -178,6 +179,8 @@ class _ProviderDialogState extends State<_ProviderDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (widget.controller != null) ...[
+              VllmSection(manager: widget.controller!.vllm),
+              const SizedBox(height: 10),
               LocalModelSection(controller: widget.controller!),
               const SizedBox(height: 14),
               ClaudeCodeSection(controller: widget.controller!, onUsed: widget.close),

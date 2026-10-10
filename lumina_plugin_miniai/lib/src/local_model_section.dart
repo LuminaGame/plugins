@@ -115,7 +115,7 @@ class _LocalModelSectionState extends State<LocalModelSection> {
               const Icon(LucideIcons.cpu, size: 14),
               const SizedBox(width: 6),
               const Expanded(
-                child: Text('Local model (recommended)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                child: Text('MiniCPM5 · llama.cpp', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
               ),
             ],
           ),

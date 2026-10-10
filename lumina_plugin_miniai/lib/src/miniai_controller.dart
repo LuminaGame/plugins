@@ -19,6 +19,7 @@ import 'package:lumina_plugin_miniai/src/context/selection_watcher.dart';
 import 'package:lumina_plugin_miniai/src/llm/llm_types.dart';
 import 'package:lumina_plugin_miniai/src/llm/sampling.dart';
 import 'package:lumina_plugin_miniai/src/local/local_model_manager.dart';
+import 'package:lumina_plugin_miniai/src/local/vllm_manager.dart';
 import 'package:lumina_plugin_miniai/src/settings/miniai_project_settings.dart';
 import 'package:lumina_plugin_miniai/src/settings/provider_settings.dart';
 
@@ -42,15 +43,27 @@ class MiniAiController extends ChangeNotifier {
     ClaudeCodeCli? claudeCli,
   }) : _defaultMode = defaultMode ?? (() => ApprovalMode.ask),
        _projectSettings = projectSettings ?? (() => const {}),
-       settings = ProviderSettings(storage, environment: environment, httpClient: httpClient),
-       local = local ?? LocalModelManager(storage: storage, environment: environment, httpClient: localHttpClient) {
+       settings = ProviderSettings(
+         storage,
+         environment: environment,
+         httpClient: httpClient,
+       ),
+       local =
+           local ??
+           LocalModelManager(
+             storage: storage,
+             environment: environment,
+             httpClient: localHttpClient,
+           ) {
     settings.addListener(notifyListeners);
+    vllm = VllmManager(storage, settings)..addListener(notifyListeners);
     this.local.addListener(_localChanged);
     final projectDir = storage.projectDir;
     store = projectDir == null ? null : ChatStore(projectDir);
     claude = ClaudeCodeAgent(
       mcp: mcp,
-      workingDirectory: projectRoot ?? projectDir?.path ?? Directory.current.path,
+      workingDirectory:
+          projectRoot ?? projectDir?.path ?? Directory.current.path,
       configDir: projectDir,
       transaction: transaction,
       starter: claudeStarter,
@@ -68,7 +81,8 @@ class MiniAiController extends ChangeNotifier {
   late final MentionIndex mentions;
 
   /// The project attaches the editor selection to messages.
-  bool get attachSelection => MiniAiProjectSettings.attachSelection(_projectSettings());
+  bool get attachSelection =>
+      MiniAiProjectSettings.attachSelection(_projectSettings());
 
   /// What [text] carries: the selection (unless dropped or turned off) and
   /// the [picked] mentions still in the text. A slash command carries
@@ -79,7 +93,10 @@ class MiniAiController extends ChangeNotifier {
     for (final m in picked) {
       if (text.contains('@${m.name}') && !present.contains(m)) present.add(m);
     }
-    return MessageContext(selection: attachSelection ? selection.attachable : null, mentions: present);
+    return MessageContext(
+      selection: attachSelection ? selection.attachable : null,
+      mentions: present,
+    );
   }
 
   /// The project folder (Claude Code runs there).
@@ -122,6 +139,7 @@ class MiniAiController extends ChangeNotifier {
 
   /// The local llama-server + MiniCPM5.
   final LocalModelManager local;
+  late final VllmManager vllm;
 
   /// The provider id of the local model.
   static const String localProviderId = 'miniai_local';
@@ -139,13 +157,15 @@ class MiniAiController extends ChangeNotifier {
 
   Future<void> load() async {
     await settings.load();
+    await vllm.load();
     // The project's preferred provider, for this session only.
     settings.useForSession(MiniAiProjectSettings.provider(_projectSettings()));
     await local.load();
     await refreshSummaries();
     // The chat that was open comes back when the project opens; else the
     // most recent one.
-    final last = [...summaries]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    final last = [...summaries]
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
     if (last.isNotEmpty && chat.items.isEmpty && !running) {
       final open = (await _readSession())?['open'] as String?;
       final id = last.any((s) => s.id == open) ? open! : last.first.id;
@@ -166,7 +186,9 @@ class MiniAiController extends ChangeNotifier {
   /// Remembers the open chat for the next time the project opens.
   Future<void> _rememberOpen() async {
     if (store == null) return;
-    await storage.writeJson('session', {'open': chat.items.isEmpty ? null : chat.id}, project: true);
+    await storage.writeJson('session', {
+      'open': chat.items.isEmpty ? null : chat.id,
+    }, project: true);
   }
 
   Future<void> refreshSummaries() async {
@@ -179,7 +201,10 @@ class MiniAiController extends ChangeNotifier {
     final s = store;
     if (s == null || chat.items.isEmpty) return Future.value();
     final previous = _saving ?? Future<void>.value();
-    final next = _saving = previous.then((_) => s.save(chat)).then((_) => _rememberOpen()).then((_) => refreshSummaries());
+    final next = _saving = previous
+        .then((_) => s.save(chat))
+        .then((_) => _rememberOpen())
+        .then((_) => refreshSummaries());
     return next;
   }
 
@@ -247,7 +272,8 @@ class MiniAiController extends ChangeNotifier {
     await refreshSummaries();
   }
 
-  Future<List<ChatSummary>> search(String query) async => await store?.search(query) ?? const [];
+  Future<List<ChatSummary>> search(String query) async =>
+      await store?.search(query) ?? const [];
 
   /// A ready server becomes (and stays) the selected `local` provider.
   void _localChanged() {
@@ -262,19 +288,25 @@ class MiniAiController extends ChangeNotifier {
 
   /// The local provider at [url]; the sampling the user set on it stays.
   ProviderConfig _localConfig(String url) => ProviderConfig(
-        id: localProviderId,
-        name: 'Local (${local.variant.label})',
-        baseUrl: url,
-        model: local.variant.id,
-        local: true,
-        backend: ServerBackend.llamaCpp,
-        sampling: settings.providers.where((p) => p.id == localProviderId).firstOrNull?.sampling,
-      );
+    id: localProviderId,
+    name: 'Local (${local.variant.label})',
+    baseUrl: url,
+    model: local.variant.id,
+    local: true,
+    backend: ServerBackend.llamaCpp,
+    sampling: settings.providers
+        .where((p) => p.id == localProviderId)
+        .firstOrNull
+        ?.sampling,
+  );
 
   /// The local provider is selected and its server is not up.
-  bool get needsLocalStart => settings.selected?.id == localProviderId && local.status != LocalModelStatus.ready;
+  bool get needsLocalStart =>
+      settings.selected?.id == localProviderId &&
+      local.status != LocalModelStatus.ready;
 
-  static String _newId() => DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+  static String _newId() =>
+      DateTime.now().microsecondsSinceEpoch.toRadixString(36);
 
   bool _bound = false;
 
@@ -301,13 +333,29 @@ class MiniAiController extends ChangeNotifier {
 
   /// Sends [text] as a new turn; ignored while a turn runs or without a
   /// provider.
-  Future<void> send(String text, {List<MentionCandidate> mentions = const [], MessageContext? context}) async {
+  Future<void> send(
+    String text, {
+    List<MentionCandidate> mentions = const [],
+    MessageContext? context,
+  }) async {
     final config = settings.selected;
-    if (text.trim().isEmpty || running || config == null || !config.isUsable) return;
+    if (text.trim().isEmpty || running || config == null || !config.isUsable)
+      return;
     lastTurnFailed = false;
     final ctx = context ?? contextFor(text.trim(), mentions);
     selection.sent();
     if (config.isClaudeCode) return _sendClaude(config, text.trim(), ctx);
+    if (config.id == VllmManager.providerId && !vllm.ready) {
+      await vllm.start();
+      if (!vllm.ready) {
+        lastTurnFailed = true;
+        chat.items.add(NoteItem(vllm.status, isError: true));
+        notifyListeners();
+        await saveChat();
+        return;
+      }
+      return send(text, context: ctx);
+    }
     if (needsLocalStart) {
       // Autostart: the server's port changes per start, so the provider is
       // re-read once it is ready.
@@ -329,14 +377,20 @@ class MiniAiController extends ChangeNotifier {
       mcp: mcp,
       transaction: transaction,
       projectName: projectName,
-      maxRounds: MiniAiProjectSettings.maxRounds(project) ?? (config.local ? 6 : 25),
-      selector: ToolsetSelector(maxTools: config.local ? 12 : 40, disabledGroups: MiniAiProjectSettings.disabledToolGroups(project)),
+      maxRounds:
+          MiniAiProjectSettings.maxRounds(project) ?? (config.local ? 6 : 25),
+      selector: ToolsetSelector(
+        maxTools: config.local ? 12 : 40,
+        disabledGroups: MiniAiProjectSettings.disabledToolGroups(project),
+      ),
       projectNotes: MiniAiProjectSettings.projectNotes(project),
       // The local model gets the short primer, a tighter guide budget and smaller result cuts.
       compactPrimer: config.local,
       guideResultBudget: config.local ? 3500 : 16000,
       resultBudget: config.local ? 2500 : 4000,
-      maxContextTokens: config.local ? local.contextSize : null,
+      maxContextTokens: config.id == VllmManager.providerId
+          ? 4096
+          : (config.local ? local.contextSize : null),
       autoCompact: config.local ? local.autoCompact : true,
     );
     final before = chat.items.length;
@@ -346,15 +400,23 @@ class MiniAiController extends ChangeNotifier {
     final turn = chat;
     await loop.run(turn, text.trim(), cancel: cancel, context: ctx);
     // Did the turn leave a level undo step?
-    if (turn.turns.isNotEmpty) turn.turns.last.sceneStep = level != null && level!.undoTopLabel == turn.turns.last.label;
-    lastTurnFailed = turn.items.skip(before).any((i) => i is NoteItem && i.isError);
+    if (turn.turns.isNotEmpty)
+      turn.turns.last.sceneStep =
+          level != null && level!.undoTopLabel == turn.turns.last.label;
+    lastTurnFailed = turn.items
+        .skip(before)
+        .any((i) => i is NoteItem && i.isError);
     _cancel = null;
     turn.updatedAt = DateTime.now().toUtc();
     notifyListeners();
     if (identical(turn, chat)) await saveChat();
   }
 
-  Future<void> _sendClaude(ProviderConfig config, String text, MessageContext context) async {
+  Future<void> _sendClaude(
+    ProviderConfig config,
+    String text,
+    MessageContext context,
+  ) async {
     final cancel = _cancel = CancelToken();
     final before = chat.items.length;
     chat
@@ -362,9 +424,20 @@ class MiniAiController extends ChangeNotifier {
       ..model = config.model.isEmpty ? null : config.model;
     final turn = chat;
     claudeError = null;
-    await claude.run(turn, text, model: config.model.isEmpty ? null : config.model, command: config.command, cancel: cancel, context: context);
-    if (turn.turns.isNotEmpty) turn.turns.last.sceneStep = level != null && level!.undoTopLabel == turn.turns.last.label;
-    lastTurnFailed = turn.items.skip(before).any((i) => i is NoteItem && i.isError);
+    await claude.run(
+      turn,
+      text,
+      model: config.model.isEmpty ? null : config.model,
+      command: config.command,
+      cancel: cancel,
+      context: context,
+    );
+    if (turn.turns.isNotEmpty)
+      turn.turns.last.sceneStep =
+          level != null && level!.undoTopLabel == turn.turns.last.label;
+    lastTurnFailed = turn.items
+        .skip(before)
+        .any((i) => i is NoteItem && i.isError);
     _cancel = null;
     turn.updatedAt = DateTime.now().toUtc();
     _refreshCommandsFromInit();
@@ -382,7 +455,11 @@ class MiniAiController extends ChangeNotifier {
     if (config == null || !config.isClaudeCode || _loadingCommands) return;
     _loadingCommands = true;
     try {
-      await claude.ensureSession(chat, model: config.model.isEmpty ? null : config.model, command: config.command);
+      await claude.ensureSession(
+        chat,
+        model: config.model.isEmpty ? null : config.model,
+        command: config.command,
+      );
       claudeError = null;
       _refreshCommandsFromInit();
     } on Object catch (e) {
@@ -394,24 +471,35 @@ class MiniAiController extends ChangeNotifier {
   }
 
   /// Terminal-only commands, until `system/init` names them.
-  static const Set<String> _terminalOnly = {'doctor', 'color', 'focus', 'reload-plugins'};
+  static const Set<String> _terminalOnly = {
+    'doctor',
+    'color',
+    'focus',
+    'reload-plugins',
+  };
 
   void _refreshCommandsFromInit() {
     final session = claude.session;
     final reported = session?.capabilities?.commands ?? const <ClaudeCommand>[];
     if (reported.isEmpty) return;
     final init = session?.init;
-    final terminal = init == null ? _terminalOnly : init.terminalCommands.toSet();
+    final terminal = init == null
+        ? _terminalOnly
+        : init.terminalCommands.toSet();
     final accepted = init?.slashCommands.toSet();
     claudeCommands = [
       for (final c in reported)
-        if (!c.name.startsWith('__') && !terminal.contains(c.name) && (accepted == null || accepted.contains(c.name))) c,
+        if (!c.name.startsWith('__') &&
+            !terminal.contains(c.name) &&
+            (accepted == null || accepted.contains(c.name)))
+          c,
     ];
   }
 
   /// Answers a Claude Code permission request (MiniAI's `permission_prompt`
   /// MCP tool).
-  Future<Map<String, Object?>> answerPermission(Map<String, Object?> request) => claude.permission(request);
+  Future<Map<String, Object?>> answerPermission(Map<String, Object?> request) =>
+      claude.permission(request);
 
   /// `Claude Code · <model> · session <id>` for the panel.
   String? get claudeState {
@@ -419,9 +507,18 @@ class MiniAiController extends ChangeNotifier {
     if (config == null || !config.isClaudeCode) return null;
     final data = chat.providerData[ClaudeCodeAgent.providerKey];
     final session = claude.session;
-    final model = session?.init?.model ?? (data is Map ? data['model'] as String? : null) ?? (config.model.isEmpty ? 'default model' : config.model);
-    final id = session?.sessionId ?? (data is Map ? data['sessionId'] as String? : null);
-    return ['Claude Code', model, if (id != null) 'session ${id.length > 8 ? id.substring(0, 8) : id}'].join(' · ');
+    final model =
+        session?.init?.model ??
+        (data is Map ? data['model'] as String? : null) ??
+        (config.model.isEmpty ? 'default model' : config.model);
+    final id =
+        session?.sessionId ??
+        (data is Map ? data['sessionId'] as String? : null);
+    return [
+      'Claude Code',
+      model,
+      if (id != null) 'session ${id.length > 8 ? id.substring(0, 8) : id}',
+    ].join(' · ');
   }
 
   /// The session's cost, turns and time from the last result.
@@ -444,10 +541,18 @@ class MiniAiController extends ChangeNotifier {
     if (turn.undoUnavailable != null) return (false, turn.undoUnavailable!);
     if (running) return (false, 'Wait for the running turn to finish');
     if (turn.sceneStep && level?.undoTopLabel != turn.label) {
-      return (false, 'Newer changes are on top of this turn in Edit ▸ Undo; undo them first');
+      return (
+        false,
+        'Newer changes are on top of this turn in Edit ▸ Undo; undo them first',
+      );
     }
-    const untracked = "Claude Code's own file edits (Edit, Write, Bash) are not tracked here";
-    if (!turn.sceneStep && turn.fileWrites == 0) return (false, turn.untracked > 0 ? untracked : 'This turn changed nothing');
+    const untracked =
+        "Claude Code's own file edits (Edit, Write, Bash) are not tracked here";
+    if (!turn.sceneStep && turn.fileWrites == 0)
+      return (
+        false,
+        turn.untracked > 0 ? untracked : 'This turn changed nothing',
+      );
     return (
       true,
       "Undo this turn's ${[if (turn.sceneStep) 'level changes', if (turn.fileWrites > 0) 'file changes'].join(' and ')}"
@@ -478,11 +583,18 @@ class MiniAiController extends ChangeNotifier {
       }
     }
     turn.undone = scene > 0 || files > 0;
-    final done = [if (scene > 0) '1 scene step', if (files > 0) '$files file${files == 1 ? '' : 's'} restored'];
-    chat.items.add(NoteItem(
-      done.isEmpty ? 'Nothing was undone: ${problems.join('; ')}.' : 'Undone: ${done.join(', ')}.${problems.isEmpty ? '' : ' (${problems.join('; ')})'}',
-      isError: problems.isNotEmpty,
-    ));
+    final done = [
+      if (scene > 0) '1 scene step',
+      if (files > 0) '$files file${files == 1 ? '' : 's'} restored',
+    ];
+    chat.items.add(
+      NoteItem(
+        done.isEmpty
+            ? 'Nothing was undone: ${problems.join('; ')}.'
+            : 'Undone: ${done.join(', ')}.${problems.isEmpty ? '' : ' (${problems.join('; ')})'}',
+        isError: problems.isNotEmpty,
+      ),
+    );
     chat.updatedAt = DateTime.now().toUtc();
     chat.changed();
     await saveChat();
@@ -491,14 +603,29 @@ class MiniAiController extends ChangeNotifier {
   /// Restores the snapshots [turn]'s calls took, newest first; returns how
   /// many files changed back.
   Future<int> _restoreFiles(TurnRecord turn) async {
-    final history = await mcp.callTool(_fsHistory, {'caller': turn.caller, 'limit': 500}, caller: '${turn.caller}:undo');
-    if (history.isError) throw StateError(history.content.map((c) => c['text']).join(' '));
+    final history = await mcp.callTool(_fsHistory, {
+      'caller': turn.caller,
+      'limit': 500,
+    }, caller: '${turn.caller}:undo');
+    if (history.isError)
+      throw StateError(history.content.map((c) => c['text']).join(' '));
     final data = jsonDecode('${history.content.first['text']}');
-    final snapshots = [for (final s in (data is Map ? (data['snapshots'] as List? ?? const []) : data as List)) Map<String, Object?>.from(s as Map)];
+    final snapshots = [
+      for (final s
+          in (data is Map
+              ? (data['snapshots'] as List? ?? const [])
+              : data as List))
+        Map<String, Object?>.from(s as Map),
+    ];
     final paths = <String>{};
     for (final s in snapshots) {
-      final r = await mcp.callTool(_fsRestore, {'snapshot_id': s['id']}, caller: '${turn.caller}:undo');
-      if (r.isError) throw StateError('${s['path']}: ${r.content.map((c) => c['text']).join(' ')}');
+      final r = await mcp.callTool(_fsRestore, {
+        'snapshot_id': s['id'],
+      }, caller: '${turn.caller}:undo');
+      if (r.isError)
+        throw StateError(
+          '${s['path']}: ${r.content.map((c) => c['text']).join(' ')}',
+        );
       paths.add('${s['path']}');
     }
     return paths.length;
@@ -518,6 +645,8 @@ class MiniAiController extends ChangeNotifier {
     settings.removeListener(notifyListeners);
     local.removeListener(_localChanged);
     local.dispose();
+    vllm.removeListener(notifyListeners);
+    vllm.dispose();
     chat.removeListener(notifyListeners);
     super.dispose();
   }

@@ -36,7 +36,44 @@ Chats are stored with the project, under `.lumina/plugins/lumina_plugin_miniai/`
 
 Open the provider dialog from the model chip in the panel (**Set up a model provider…**).
 
-### Local model (recommended)
+### Gemma 4 E4B with vllm.cpp
+
+The provider dialog has a separate Gemma runtime card. **Connect & use** verifies
+that the endpoint serves `gemma-4-E4B-it` before selecting it. **Start** starts an
+owned server; startup errors also appear in the chat. A configured LAN endpoint
+is connected without starting a local process. The managed context is 4096 tokens.
+
+On Windows, a native `vllm-server.exe` and a Hugging Face model folder can be
+configured. Build the pinned source with Visual Studio 2022 C++/CMake tools:
+
+```powershell
+python tool/build_vllm_windows.py --source <vllm.cpp-checkout> --jobs 8
+```
+
+The checkout must be at `6d33ea819debc3c52a068e1d24854ab92c2a85b6`. The builder
+uses MSVC and Vulkan and installs into `%LOCALAPPDATA%/Lumina/vllm_native/runtime`.
+Set the resulting `bin/vllm-server.exe` and the Gemma model folder in the card.
+**Install** downloads the pinned `unsloth/gemma-4-E4B-it` weights when a native
+executable is configured. The weights require approximately 15 GB of disk space.
+CUDA and native Vulkan GPU indices are separate because their enumeration order
+can differ. Text and tool calls use the Gemma parser; image attachments are disabled.
+
+Native CPU text generation and structured tool calls have been verified. CPU is
+the default native device. The Vulkan build loads this checkpoint but failed
+generation with `vkAllocateMemory` on the tested RTX PRO 2000, so `auto` remains
+an optional device selection rather than the verified default. The Windows build
+adapter puts the Qwen3.5 registration before its Tev1 alias to avoid a global
+initialization exception before `main()`. No upstream source files are edited.
+An already-running compatible server is reused; **Stop** only terminates a server
+started by this manager.
+
+With the native executable field empty, Windows uses Ubuntu WSL and the published
+Linux runtime. That older `v0.0.2` runtime fails Gemma CUDA generation with
+`GeluMulSeparate: ROCm-only fast path`; use a current native build for Gemma instead.
+Installation and inference errors are displayed rather than replacing the selected
+provider with an unverified connection.
+
+### MiniCPM5 with llama.cpp
 
 One click downloads and installs:
 
