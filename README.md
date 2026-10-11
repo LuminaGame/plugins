@@ -7,7 +7,8 @@ Plugins for Lumina Studio, the editor of the [Lumina](https://github.com/LuminaG
 | Plugin | What it adds |
 |---|---|
 | [`lumina_plugin_pcg`](lumina_plugin_pcg/) | Procedural Content Generation: PCG Graph assets and PCG Volume actors that scatter static meshes over a landscape or a volume floor. The reference example of the plugin API. |
-| [`lumina_plugin_miniai`](lumina_plugin_miniai/) | MiniAI: an AI assistant panel that chats with a local model (llama-server + MiniCPM5, downloaded on demand) or any OpenAI-compatible endpoint, and works on the project through the editor's MCP tools. |
+| [`lumina_plugin_miniai`](lumina_plugin_miniai/) | MiniAI: an AI assistant panel that chats with a local model (vllm.cpp + Gemma 4 E4B / llama-server + MiniCPM5, downloaded on demand) or any OpenAI-compatible endpoint, and works on the project through the editor's MCP tools. |
+| [`lumina_plugin_trellis_image`](lumina_plugin_trellis_image/) | Qwen Image 2.1 Q4_K_M with stable-diffusion.cpp: text/reference editing, image review and approval before Trellis 3D generation. |
 
 ## How a Lumina plugin is put together
 

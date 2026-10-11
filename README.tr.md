@@ -7,7 +7,8 @@
 | Plugin | Ne ekler |
 |---|---|
 | [`lumina_plugin_pcg`](lumina_plugin_pcg/) | Procedural Content Generation: static mesh'leri bir landscape'in ya da volume tabanının üzerine dağıtan PCG Graph asset'leri ve PCG Volume actor'leri. Plugin API'sinin referans örneği. |
-| [`lumina_plugin_miniai`](lumina_plugin_miniai/) | MiniAI: local bir modelle (gerektiğinde indirilen llama-server + MiniCPM5) ya da herhangi bir OpenAI-compatible endpoint ile sohbet eden ve editor'ün MCP tool'ları üzerinden proje üzerinde çalışan bir AI asistan paneli. |
+| [`lumina_plugin_miniai`](lumina_plugin_miniai/) | MiniAI: local bir modelle (gerektiğinde indirilen vllm.cpp + Gemma 4 E4B / llama-server + MiniCPM5) ya da herhangi bir OpenAI-compatible endpoint ile sohbet eden ve editor'ün MCP tool'ları üzerinden proje üzerinde çalışan bir AI asistan paneli. |
+| [`lumina_plugin_trellis_image`](lumina_plugin_trellis_image/) | stable-diffusion.cpp ile Qwen Image 2.1 Q4_K_M: metin/referans düzenleme, görsel önizleme ve Trellis 3D üretiminden önce onay. |
 
 ## Bir Lumina plugin'i nasıl kurulur
 

@@ -1,0 +1,31 @@
+name: lumina_plugin_trellis_image
+description: Qwen Image generation and editing with approval before Trellis 3D.
+version: 0.1.0
+publish_to: none
+resolution: workspace
+environment:
+  sdk: ^3.12.0
+dependencies:
+  flutter:
+    sdk: flutter
+  shadcn_flutter: 0.0.55
+  crypto: ^3.0.7
+  lumina_editor_api:
+    git:
+      url: https://github.com/LuminaGame/lumina.git
+      path: lumina_editor_api
+      ref: 87ca08bec43927031cb16a4297336d4d96389e35
+  lumina_plugin_process:
+    git:
+      url: https://github.com/LuminaGame/lumina.git
+      path: lumina_plugin_process
+      ref: 87ca08bec43927031cb16a4297336d4d96389e35
+  lumina_core:
+    git:
+      url: https://github.com/LuminaGame/lumina.git
+      path: lumina_core
+      ref: 87ca08bec43927031cb16a4297336d4d96389e35
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

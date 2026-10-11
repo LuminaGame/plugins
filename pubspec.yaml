@@ -1,5 +1,5 @@
 name: lumina_plugins_workspace
-description: "Lumina plugins: MIT-licensed Lumina Studio plugins (PCG, MiniAI) built on the lumina_editor_api plugin API."
+description: "Lumina plugins: MIT-licensed Lumina Studio plugins (PCG, MiniAI, Trellis Image) built on the lumina_editor_api plugin API."
 publish_to: none
 
 environment:
@@ -9,6 +9,7 @@ environment:
 workspace:
   - lumina_plugin_pcg
   - lumina_plugin_miniai
+  - lumina_plugin_trellis_image
 
 dev_dependencies:
   melos: ^7.8.0
