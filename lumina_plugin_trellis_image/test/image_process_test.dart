@@ -94,6 +94,28 @@ void main() {
       );
     },
   );
+  test('a cloth request wraps the garment in the ghost-mannequin prompt', () {
+    final config = ImageConfig(root: host.root.path);
+    final request = ImageRequest.fromJson({
+      'prompt': '  denim jacket with brass buttons ',
+      'cloth': true,
+    });
+    final prompt = request.arguments(
+      config,
+      'out.png',
+    )[request.arguments(config, 'out.png').indexOf('-p') + 1];
+    expect(
+      prompt,
+      contains('only the hollow denim jacket with brass buttons.'),
+    );
+    expect(prompt, contains('ghost-mannequin'));
+    expect(prompt, contains('A-pose'));
+    expect(prompt, isNot(contains('{prompt}')));
+    // Off by default: the prompt goes to the model as typed.
+    final plain = ImageRequest.fromJson({'prompt': 'A pot'});
+    expect(plain.cloth, isFalse);
+    expect(plain.effectivePrompt, 'A pot');
+  });
   test(
     'real Qwen generation produces a reviewable image without calling 3D',
     () async {

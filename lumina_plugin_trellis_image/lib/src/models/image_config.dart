@@ -34,11 +34,35 @@ class ImageRequest {
     this.height = 1024,
     this.steps = 20,
     this.seed = 42,
+    this.cloth = false,
   });
   final String prompt;
   final String? reference;
   final int width, height, steps, seed;
+
+  /// The prompt describes a garment: it is wrapped in [clothTemplate] so the
+  /// image shows the garment alone, hollow and in a worn shape, ready for 3D.
+  final bool cloth;
+
+  /// `{prompt}` is replaced by the user's garment description.
+  static const clothTemplate =
+      'Centered, full-frame commercial studio product photograph in the '
+      'ghost-mannequin style, showing only the hollow {prompt}. The garment '
+      'keeps its natural three-dimensional worn volume and shape, as if worn by '
+      'an invisible person, and floats upright facing the camera in an A-pose, '
+      'with sleeves and legs held slightly away from the body. The entire '
+      'garment is in frame and in sharp focus, on a plain neutral seamless '
+      'background with soft, even studio lighting. No person, no visible '
+      'mannequin, no hanger, no props.';
+
+  /// The text given to the image model.
+  String get effectivePrompt {
+    final text = prompt.trim();
+    return cloth ? clothTemplate.replaceAll('{prompt}', text) : text;
+  }
+
   factory ImageRequest.fromJson(Map<String, Object?> json) => ImageRequest(
+    cloth: json['cloth'] as bool? ?? false,
     prompt: json['prompt'] as String? ?? '',
     reference: json['reference'] as String?,
     width: (json['width'] as num?)?.toInt() ?? 1024,
@@ -77,7 +101,7 @@ class ImageRequest {
       '--llm',
       config.encoder,
       '-p',
-      prompt,
+      effectivePrompt,
       '--steps',
       '$steps',
       '--cfg-scale',

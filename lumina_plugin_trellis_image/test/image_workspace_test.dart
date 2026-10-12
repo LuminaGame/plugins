@@ -40,6 +40,12 @@ void main() {
     );
     expect(approve.onPressed, isNull);
     expect(find.text('sd-cli executable'), findsOneWidget);
+    // Is cloth starts off and toggles on a tap.
+    Checkbox cloth() => tester.widget(find.byKey(const Key('qwen_is_cloth')));
+    expect(cloth().state, CheckboxState.unchecked);
+    await tester.tap(find.byKey(const Key('qwen_is_cloth')));
+    await tester.pump();
+    expect(cloth().state, CheckboxState.checked);
     await tester.pumpWidget(const SizedBox());
     await tester.runAsync(() async {
       client.dispose();

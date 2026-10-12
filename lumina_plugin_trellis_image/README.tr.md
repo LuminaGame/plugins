@@ -8,6 +8,11 @@ Plugin Manager'da iki eklentiyi de etkinleştirin ve editörü yeniden başlatı
 Vulkan çalışma zamanını ve modelleri kurun, isteminizi yazın; isterseniz editörün
 asset picker'ından içe aktarılmış bir texture seçip **Generate image** düğmesine
 basın. Düzenleme için referansa uygulanacak değişiklikleri aynı istemde tarif edin.
+Giysi için **Is cloth** kutusunu işaretleyip yalnızca giysiyi yazın (örneğin
+"denim jacket with brass buttons"): istem bir ghost-mannequin ürün fotoğrafı
+şablonuna sarılır; görsel giysiyi tek başına, içi boş ve giyilmiş 3B hacmiyle,
+dik ve kameraya dönük A-pozunda gösterir, böylece Trellis temiz bir giysi mesh'i
+üretir. MCP aracı `generate_image` aynı `cloth` bayrağını alır.
 
 Tamamlanan görseli inceleyip **Approve this image & generate 3D** düğmesine basın.
 Trellis çalışır; üretilen mesh **henüz kaydedilmez**. Sekmenin içinde etkileşimli

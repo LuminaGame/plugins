@@ -7,7 +7,12 @@ Enable both plugins in Plugin Manager and restart the editor. Open
 **Plugins → Trellis Image → Text or Reference to 3D…**. Install the Windows
 Vulkan runtime and models, enter a prompt, optionally choose an imported texture
 with the editor asset picker, and select **Generate image**. For an edit, describe
-the changes to make to the reference texture in the same prompt.
+the changes to make to the reference texture in the same prompt. For clothing,
+check **Is cloth** and name only the garment (for example "denim jacket with
+brass buttons"): the prompt is wrapped in a ghost-mannequin product-photo
+template, so the image shows the garment alone, hollow and in its worn 3D shape,
+upright and facing the camera in an A-pose, which gives Trellis a clean garment
+mesh. The MCP tool `generate_image` takes the same `cloth` flag.
 
 Review the completed image, then select **Approve this image & generate 3D**.
 This invokes Trellis; the generated mesh is **not** saved yet. It opens in an

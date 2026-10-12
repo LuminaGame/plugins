@@ -76,6 +76,11 @@ class TrellisImageProcess extends LuminaPluginProcess {
             'height': {'type': 'integer'},
             'steps': {'type': 'integer'},
             'seed': {'type': 'integer'},
+            'cloth': {
+              'type': 'boolean',
+              'description':
+                  'The prompt names a garment: render it alone, hollow and in a worn shape (ghost mannequin), ready for 3D.',
+            },
           },
           'required': ['prompt'],
         },
@@ -88,6 +93,7 @@ class TrellisImageProcess extends LuminaPluginProcess {
               'height',
               'steps',
               'seed',
+              'cloth',
             ])
               name: args[name],
           })..validate();

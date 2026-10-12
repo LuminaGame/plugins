@@ -30,6 +30,7 @@ class _ImageWorkspaceState extends State<ImageWorkspace> {
   final _size = TextEditingController(text: '1024');
   final _postTriangles = TextEditingController();
   String? _reference;
+  bool _cloth = false;
   bool _configured = false;
   @override
   void initState() {
@@ -92,6 +93,7 @@ class _ImageWorkspaceState extends State<ImageWorkspace> {
     }
     await widget.client.call('image.generate', {
       'prompt': _prompt.text,
+      'cloth': _cloth,
       'reference': _reference,
       'steps': steps,
       'seed': seed,
@@ -157,6 +159,22 @@ class _ImageWorkspaceState extends State<ImageWorkspace> {
                   ),
                   const Gap(12),
                   _field('Describe the image or the reference edit', _prompt),
+                  Checkbox(
+                    key: const Key('qwen_is_cloth'),
+                    state: _cloth
+                        ? CheckboxState.checked
+                        : CheckboxState.unchecked,
+                    onChanged: client.busy
+                        ? null
+                        : (s) => setState(
+                            () => _cloth = s == CheckboxState.checked,
+                          ),
+                    trailing: const Text(
+                      'Is cloth (garment alone, hollow, worn shape)',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                  ),
+                  const Gap(12),
                   if (widget.host != null) ...[
                     const Text(
                       'Reference texture (optional)',
