@@ -6,7 +6,7 @@ import 'dart:isolate';
 import 'package:crypto/crypto.dart';
 import 'package:lumina_core/lumina_core.dart';
 import 'package:lumina_plugin_process/lumina_plugin_process.dart';
-import '../models/image_config.dart';
+import 'package:lumina_plugin_trellis_image/src/models/image_config.dart';
 
 /// Owns native child processes and draft approval outside the editor process.
 class TrellisImageProcess extends LuminaPluginProcess {
@@ -133,8 +133,18 @@ class TrellisImageProcess extends LuminaPluginProcess {
           ? Map<String, Object?>.from(args['result'] as Map)
           : null;
       status = error == null
-          ? '3D model saved to the project'
+          ? '3D model ready. Review it, then save it to the project.'
           : '3D generation failed';
+      emit();
+      return snapshot;
+    });
+    // The reviewed mesh was saved into the project (the shell's Save).
+    context.handle('image.saved3d', (args) {
+      if (args['draftId'] != draftHash) {
+        throw StateError('This draft is no longer current.');
+      }
+      result = {'asset_path': args['asset_path'], 'glb_path': args['glb_path']};
+      status = '3D model saved to the project';
       emit();
       return snapshot;
     });

@@ -31,6 +31,17 @@ void main() {
     expect(process.busy, isFalse);
     expect(process.draft, isNull);
   });
+  test('recording a saved 3D model needs the current draft', () async {
+    await expectLater(
+      host.channel.call('image.saved3d', {
+        'draftId': 'old',
+        'asset_path': 'contents/meshes/trellis/SM_X.lmas',
+      }),
+      throwsA(isA<PluginRemoteError>()),
+    );
+    final state = await host.channel.call('image.state') as Map;
+    expect(state['result'], isNull);
+  });
   test('invalid prompt does not consume or start a job', () async {
     await expectLater(
       host.channel.call('image.generate', {'prompt': ' '}),

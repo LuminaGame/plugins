@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
-import 'image_trellis_job.dart';
+import 'package:lumina_plugin_trellis_image/src/shell/image_trellis_job.dart';
 
 class ImageClient extends ChangeNotifier {
   ImageClient(this.channel, {PluginProcessChannel? trellis}) {
@@ -30,7 +30,8 @@ class ImageClient extends ChangeNotifier {
   String? get error => job?.error.isNotEmpty == true
       ? job!.error
       : callError ?? state['error'] as String?;
-  String get status => job?.busy == true
+  String get status =>
+      job?.busy == true || job?.working == true || job?.preview != null
       ? job!.status
       : state['status'] as String? ?? 'Connecting to image plugin…';
   Future<void> approve3d() async {
@@ -81,6 +82,7 @@ class ImageClient extends ChangeNotifier {
   @override
   void dispose() {
     disposed = true;
+    unawaited(job?.dispose());
     unawaited(_events.cancel());
     channel.state.removeListener(_processChanged);
     super.dispose();

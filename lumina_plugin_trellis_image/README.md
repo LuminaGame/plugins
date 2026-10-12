@@ -10,9 +10,26 @@ with the editor asset picker, and select **Generate image**. For an edit, descri
 the changes to make to the reference texture in the same prompt.
 
 Review the completed image, then select **Approve this image & generate 3D**.
-This invokes Trellis and saves its generated mesh into the open project, without
-automatically placing an actor. Trellis must have its own executable and models
-configured. Image generation alone never starts 3D generation. New generations
+This invokes Trellis; the generated mesh is **not** saved yet. It opens in an
+interactive 3D view inside the tab (the editor's viewport: left drag orbits,
+right / middle drag pans, the wheel zooms; **Lit**, **Unlit** and **Wireframe**;
+vertex colours show as Trellis baked them) with its triangles, vertices, size
+(cm) and file size. Nothing is written into the project until **Save to
+Project** (asset name + project folder, default `contents/meshes/trellis`; it
+writes `.glb`, `.entity.glb` and a `.lmas` StaticMesh, without placing an actor).
+**Regenerate** discards the result and generates again from the same approved
+image; **Discard** deletes it. The result lives in the Trellis plugin's temp
+folder, which is also cleaned when the editor closes.
+
+**Simplify** reduces the triangle count before saving: choose a ratio (slider,
+or 50% / 25% / 10%) or a triangle target, **Apply** (computed in the Trellis
+plugin process, about 2 s for a 1 M-vertex mesh) and compare before → after;
+**Revert** shows the generated mesh again. The simplifier keeps vertex colours,
+UVs, normals and open borders (Trellis' meshoptimizer edge collapse; see its
+README for the numbers). Save writes the mesh shown. To simplify every result,
+set **Simplify after 3D generation: target triangles** in the left rail; Revert
+still returns to the full mesh. Trellis must have its own executable and models
+configured (Trellis 3D 0.3+). Image generation alone never starts 3D generation. New generations
 invalidate the old draft; the approval checks that the image bytes have not changed.
 
 The Windows installer downloads about 11 GB, uses pinned revisions and SHA-256

@@ -1,7 +1,7 @@
 {
   "name": "lumina_plugin_trellis_image",
   "friendly_name": "Trellis Image Studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Qwen Image 2.1 text/reference editing with approved image-to-3D generation.",
   "category": "AI / Generation",
   "authors": ["Lumina"],
@@ -9,6 +9,6 @@
   "engine_version": ">=0.0.1 <1.0.0",
   "can_contain_content": false,
   "isolation": "process",
-  "dependencies": [{"name": "trellis_plugin", "version": ">=0.2.0 <1.0.0"}],
+  "dependencies": [{"name": "trellis_plugin", "version": ">=0.3.0 <1.0.0"}],
   "modules": [{"name": "lumina_plugin_trellis_image", "type": "editor", "entry_library": "lib/lumina_plugin_trellis_image.dart", "registration_class": "TrellisImagePlugin", "process_class": "TrellisImageProcess"}]
 }

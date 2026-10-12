@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import '../models/image_config.dart';
-import '../shell/image_client.dart';
+import 'package:lumina_plugin_trellis_image/src/models/image_config.dart';
+import 'package:lumina_plugin_trellis_image/src/shell/image_client.dart';
+import 'package:lumina_plugin_trellis_image/src/ui/preview/mesh_preview_pane.dart';
+import 'package:lumina_plugin_trellis_image/src/ui/preview/preview_style.dart';
 
 class ImageWorkspace extends StatefulWidget {
   const ImageWorkspace({
@@ -26,6 +28,7 @@ class _ImageWorkspaceState extends State<ImageWorkspace> {
   final _steps = TextEditingController(text: '20');
   final _seed = TextEditingController(text: '42');
   final _size = TextEditingController(text: '1024');
+  final _postTriangles = TextEditingController();
   String? _reference;
   bool _configured = false;
   @override
@@ -64,6 +67,7 @@ class _ImageWorkspaceState extends State<ImageWorkspace> {
       _steps,
       _seed,
       _size,
+      _postTriangles,
     ]) {
       controller.dispose();
     }
@@ -94,6 +98,19 @@ class _ImageWorkspaceState extends State<ImageWorkspace> {
       'width': size,
       'height': size,
     });
+  }
+
+  Future<void> _approve3d() async {
+    final text = _postTriangles.text.trim();
+    final target = text.isEmpty ? null : int.tryParse(text);
+    if (text.isNotEmpty && (target == null || target < 1)) {
+      widget.client.callError =
+          'The target triangles must be a positive whole number.';
+      setState(() {});
+      return;
+    }
+    widget.client.job?.generationTargetTriangles = target;
+    await widget.client.approve3d();
   }
 
   Widget _field(String label, TextEditingController controller) => Padding(
@@ -169,6 +186,10 @@ class _ImageWorkspaceState extends State<ImageWorkspace> {
                     child: const Text('Generate image'),
                   ),
                   const Gap(16),
+                  _field(
+                    'Simplify after 3D generation: target triangles (optional)',
+                    _postTriangles,
+                  ),
                   _field('Model/runtime folder', _root),
                   _field('sd-cli executable', _binary),
                   _field('Vulkan GPU index', _gpu),
@@ -216,33 +237,44 @@ class _ImageWorkspaceState extends State<ImageWorkspace> {
                       style: TextStyle(color: colors.destructive),
                     ),
                   ),
-                Expanded(
-                  child: client.draft == null
-                      ? const Center(
-                          child: Text('Generate an image to review it here.'),
-                        )
-                      : Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Image.file(
-                            File(client.draft!),
-                            key: ValueKey(client.draftId),
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, error, _) =>
-                                Center(child: Text('Preview failed: $error')),
+                if (client.job?.preview != null)
+                  Expanded(
+                    child: MeshPreviewPane(
+                      job: client.job!,
+                      host: widget.host,
+                      style: PreviewStyle.of(context, widget.editorTheme),
+                    ),
+                  )
+                else ...[
+                  Expanded(
+                    child: client.draft == null
+                        ? const Center(
+                            child: Text('Generate an image to review it here.'),
+                          )
+                        : Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Image.file(
+                              File(client.draft!),
+                              key: ValueKey(client.draftId),
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, error, _) =>
+                                  Center(child: Text('Preview failed: $error')),
+                            ),
                           ),
-                        ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: PrimaryButton(
-                    key: const Key('qwen_approve_3d'),
-                    onPressed: client.busy || client.draftId == null
-                        ? null
-                        : client.approve3d,
-                    child: const Text('Approve this image & generate 3D'),
                   ),
-                ),
-                if (client.state['result'] is Map)
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: PrimaryButton(
+                      key: const Key('qwen_approve_3d'),
+                      onPressed: client.busy || client.draftId == null
+                          ? null
+                          : _approve3d,
+                      child: const Text('Approve this image & generate 3D'),
+                    ),
+                  ),
+                ],
+                if (client.state['result'] is Map &&
+                    (client.state['result'] as Map)['asset_path'] != null)
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: SelectableText(

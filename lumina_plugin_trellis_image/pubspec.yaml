@@ -1,6 +1,6 @@
 name: lumina_plugin_trellis_image
 description: Qwen Image generation and editing with approval before Trellis 3D.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 resolution: workspace
 environment:

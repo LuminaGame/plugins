@@ -1,7 +1,7 @@
 import 'package:lumina_editor_api/lumina_editor_api.dart';
 import 'package:shadcn_flutter/shadcn_flutter.dart';
-import 'shell/image_client.dart';
-import 'ui/image_workspace.dart';
+import 'package:lumina_plugin_trellis_image/src/shell/image_client.dart';
+import 'package:lumina_plugin_trellis_image/src/ui/image_workspace.dart';
 
 class TrellisImagePlugin extends LuminaEditorPlugin {
   @override

@@ -10,8 +10,25 @@ asset picker'ından içe aktarılmış bir texture seçip **Generate image** dü
 basın. Düzenleme için referansa uygulanacak değişiklikleri aynı istemde tarif edin.
 
 Tamamlanan görseli inceleyip **Approve this image & generate 3D** düğmesine basın.
-Trellis oluşan mesh'i açık projeye kaydeder; sahneye otomatik aktör yerleştirmez.
-Trellis'in kendi çalıştırılabilir dosyası ve modelleri önceden ayarlanmalıdır.
+Trellis çalışır; üretilen mesh **henüz kaydedilmez**. Sekmenin içinde etkileşimli
+bir 3D görünümde açılır (editörün viewport'u: sol sürükleme döndürür, sağ / orta
+sürükleme kaydırır, tekerlek yakınlaştırır; **Lit**, **Unlit** ve **Wireframe**;
+vertex renkleri Trellis'in işlediği gibi görünür) ve üçgen, köşe, boyut (cm) ve
+dosya boyutunu gösterir. **Save to Project** (varlık adı + proje klasörü, varsayılan
+`contents/meshes/trellis`; `.glb`, `.entity.glb` ve bir `.lmas` StaticMesh yazar,
+aktör yerleştirmez) seçilene kadar projeye hiçbir şey yazılmaz. **Regenerate**
+sonucu atıp aynı onaylı görselden yeniden üretir; **Discard** siler. Sonuç Trellis
+eklentisinin geçici klasöründe durur; bu klasör editör kapanınca da temizlenir.
+
+**Simplify** kaydetmeden önce üçgen sayısını azaltır: bir oran (kaydırıcı ya da
+%50 / %25 / %10) veya bir üçgen hedefi seçin, **Apply** (Trellis eklenti sürecinde
+hesaplanır, 1 M köşeli bir mesh için yaklaşık 2 sn) ve önce → sonra sayılarını
+karşılaştırın; **Revert** üretilen mesh'i yeniden gösterir. Sadeleştirici vertex
+renklerini, UV'leri, normalleri ve açık kenarları korur (Trellis'in meshoptimizer
+kenar çöktürmesi; sayılar onun README'sinde). Save gösterilen mesh'i yazar. Her
+sonucu sadeleştirmek için sol paneldeki **Simplify after 3D generation: target
+triangles** alanını doldurun; Revert yine tam mesh'e döner. Trellis'in kendi
+çalıştırılabilir dosyası ve modelleri önceden ayarlanmalıdır (Trellis 3D 0.3+).
 Görsel üretimi tek başına 3D üretimini başlatmaz. Yeni üretim eski görseli
 geçersiz kılar; onayda görsel dosyasının değişmediği de kontrol edilir.
 
