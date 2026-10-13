@@ -14,17 +14,17 @@ dependencies:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina_editor_api
-      ref: dee5ec3fc86c4147bc34bcdae3543df7f826379d
+      ref: 8fa19e2fa8eecc66da5630053a1c6dd4f0c43033
   lumina_plugin_process:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina_plugin_process
-      ref: dee5ec3fc86c4147bc34bcdae3543df7f826379d
+      ref: 8fa19e2fa8eecc66da5630053a1c6dd4f0c43033
   lumina_core:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina_core
-      ref: dee5ec3fc86c4147bc34bcdae3543df7f826379d
+      ref: 8fa19e2fa8eecc66da5630053a1c6dd4f0c43033
 dev_dependencies:
   flutter_test:
     sdk: flutter
