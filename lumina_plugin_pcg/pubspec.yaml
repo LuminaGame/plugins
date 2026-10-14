@@ -16,18 +16,18 @@ dependencies:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina_editor_api
-      ref: 5981aeec85fa2d456323103656b5879784fd4458
+      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
   lumina:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina
-      ref: 5981aeec85fa2d456323103656b5879784fd4458
+      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
   # The pure-Dart foundation (file formats, paths, math) shared with the engine.
   lumina_core:
     git:
       url: https://github.com/LuminaGame/lumina.git
       path: lumina_core
-      ref: 5981aeec85fa2d456323103656b5879784fd4458
+      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
   # Pinned to the exact version Lumina Studio resolves: a plugin shares the
   # host's single shadcn_flutter copy.
   shadcn_flutter: 0.0.55
