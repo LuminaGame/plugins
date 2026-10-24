@@ -234,8 +234,8 @@ packages:
     dependency: transitive
     description:
       path: flutter_filament
-      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
-      resolved-ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
+      ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
+      resolved-ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
       url: "https://github.com/LuminaGame/lumina.git"
     source: git
     version: "0.0.1"
@@ -244,7 +244,7 @@ packages:
     description:
       path: flutter_gstreamer
       ref: HEAD
-      resolved-ref: f204e31a666523d0bc2c8654df1d61da2cfc203d
+      resolved-ref: a5296f899edfff740af6b96cdae5622344e06bff
       url: "https://github.com/LuminaGame/tools.git"
     source: git
     version: "0.1.0"
@@ -252,8 +252,8 @@ packages:
     dependency: transitive
     description:
       path: flutter_jolt
-      ref: f204e31a666523d0bc2c8654df1d61da2cfc203d
-      resolved-ref: f204e31a666523d0bc2c8654df1d61da2cfc203d
+      ref: "29273be586261ce794e1483eacffa7c42f81146e"
+      resolved-ref: "29273be586261ce794e1483eacffa7c42f81146e"
       url: "https://github.com/LuminaGame/tools.git"
     source: git
     version: "0.0.1"
@@ -407,8 +407,8 @@ packages:
     dependency: transitive
     description:
       path: lumina
-      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
-      resolved-ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
+      ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
+      resolved-ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
       url: "https://github.com/LuminaGame/lumina.git"
     source: git
     version: "0.0.1"
@@ -416,8 +416,8 @@ packages:
     dependency: transitive
     description:
       path: lumina_core
-      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
-      resolved-ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
+      ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
+      resolved-ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
       url: "https://github.com/LuminaGame/lumina.git"
     source: git
     version: "0.0.1"
@@ -425,8 +425,8 @@ packages:
     dependency: transitive
     description:
       path: lumina_editor_api
-      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
-      resolved-ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
+      ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
+      resolved-ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
       url: "https://github.com/LuminaGame/lumina.git"
     source: git
     version: "0.0.1"
@@ -434,8 +434,8 @@ packages:
     dependency: transitive
     description:
       path: lumina_mouse_capture
-      ref: f204e31a666523d0bc2c8654df1d61da2cfc203d
-      resolved-ref: f204e31a666523d0bc2c8654df1d61da2cfc203d
+      ref: "29273be586261ce794e1483eacffa7c42f81146e"
+      resolved-ref: "29273be586261ce794e1483eacffa7c42f81146e"
       url: "https://github.com/LuminaGame/tools.git"
     source: git
     version: "0.0.1"
@@ -443,8 +443,8 @@ packages:
     dependency: transitive
     description:
       path: lumina_plugin_process
-      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
-      resolved-ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
+      ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
+      resolved-ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
       url: "https://github.com/LuminaGame/lumina.git"
     source: git
     version: "0.0.1"
@@ -452,8 +452,8 @@ packages:
     dependency: transitive
     description:
       path: lumina_plugin_protocol
-      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
-      resolved-ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
+      ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
+      resolved-ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
       url: "https://github.com/LuminaGame/lumina.git"
     source: git
     version: "0.0.1"
@@ -461,8 +461,8 @@ packages:
     dependency: transitive
     description:
       path: lumina_smoke
-      ref: f204e31a666523d0bc2c8654df1d61da2cfc203d
-      resolved-ref: f204e31a666523d0bc2c8654df1d61da2cfc203d
+      ref: "29273be586261ce794e1483eacffa7c42f81146e"
+      resolved-ref: "29273be586261ce794e1483eacffa7c42f81146e"
       url: "https://github.com/LuminaGame/tools.git"
     source: git
     version: "0.1.0"
@@ -470,8 +470,8 @@ packages:
     dependency: transitive
     description:
       path: lumina_widgets
-      ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
-      resolved-ref: ca32f86b537bf836017d64bd98f10f39bc01e8af
+      ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
+      resolved-ref: "39a1afc85e319e7ac451587c862ffc0fa18096af"
       url: "https://github.com/LuminaGame/lumina.git"
     source: git
     version: "0.0.1"
