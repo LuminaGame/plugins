@@ -38,6 +38,8 @@ The editor is form-based: the nodes in evaluation order, with add, remove, move 
 
 Because the instances are plain actors, the viewport, Play-In-Editor, Dart code generation and the packaged game need nothing PCG-specific.
 
+The graph tab and the volume's Details section are built with the editor's island widgets from `lumina_editor_api` (`EditorIslandHeader` for the graph's title row, `EditorIslandSectionLabel` for the volume's sections), so they look like Lumina Studio's own panels and follow its theme.
+
 ## Installing
 
 Get the plugin from the Lumina Marketplace inside Lumina Studio, or put this folder into one of the plugin roots the editor scans: the engine's `plugins/`, `<project>/plugins/`, or the per-user `~/.local/share/lumina/plugins/`. For development, link your checkout:

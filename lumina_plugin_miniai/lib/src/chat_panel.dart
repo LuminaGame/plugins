@@ -86,10 +86,12 @@ class _ChatPanelState extends State<ChatPanel> {
   }
 
   Widget _header(BuildContext context) {
-    final theme = Theme.of(context);
     final chat = c.chat;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(12, 6, 6, 0),
+    final island = EditorIslandThemeData.active;
+    return Container(
+      height: EditorIslandStyle.headerHeight,
+      padding: const EdgeInsets.only(left: 12, right: 6),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: island.border))),
       child: Row(
         children: [
           Expanded(
@@ -108,7 +110,7 @@ class _ChatPanelState extends State<ChatPanel> {
                       key: const ValueKey('miniai_chat_title'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 12, color: theme.colorScheme.foreground, fontWeight: _history ? FontWeight.w600 : null),
+                      style: island.ui(fontSize: 12, color: island.foreground, fontWeight: _history ? FontWeight.w700 : FontWeight.w600),
                     ),
                   ),
           ),

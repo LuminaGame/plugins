@@ -60,6 +60,7 @@ class _PcgVolumeDetailsState extends State<PcgVolumeDetails> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const EditorIslandSectionLabel('PCG Volume', padding: EdgeInsets.only(bottom: 6)),
           PcgFieldRow(
             label: 'PCG Graph',
             child: graphs.isEmpty
@@ -116,7 +117,7 @@ class _PcgVolumeDetailsState extends State<PcgVolumeDetails> {
             label: 'Instances',
             child: Text('$generated', key: const Key('pcg_instance_count'), style: const TextStyle(fontSize: 10)),
           ),
-          const SizedBox(height: 6),
+          const EditorIslandSectionLabel('Generation'),
           Row(
             children: [
               PrimaryButton(

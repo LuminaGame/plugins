@@ -38,6 +38,8 @@ Editor form tabanlıdır: node'lar evaluation sırasıyla listelenir; ekleme, si
 
 Instance'lar sıradan actor'ler olduğu için viewport, Play-In-Editor, Dart code generation ve paketlenmiş oyun PCG'ye özel hiçbir şeye ihtiyaç duymaz.
 
+Graph sekmesi ve volume'un Details bölümü `lumina_editor_api`'deki editör ada bileşenleriyle kurulur (graph'ın başlık satırı için `EditorIslandHeader`, volume bölümleri için `EditorIslandSectionLabel`); böylece Lumina Studio'nun kendi panelleri gibi görünür ve temasını izler.
+
 ## Kurulum
 
 Plugin'i Lumina Studio içinden Lumina Marketplace'ten alın ya da bu klasörü editor'ün taradığı plugin root'larından birine koyun: engine'in `plugins/` klasörü, `<project>/plugins/` ya da kullanıcıya özel `~/.local/share/lumina/plugins/`. Development için checkout'unuzu link'leyin:

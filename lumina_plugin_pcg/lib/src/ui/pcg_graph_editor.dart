@@ -109,15 +109,12 @@ class _PcgGraphEditorState extends State<PcgGraphEditor> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Row(
-            children: [
-              const Icon(LucideIcons.workflow, size: 14),
-              const SizedBox(width: 6),
-              Text('PCG GRAPH · ${_graph.name}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-              if (_dirty) const Padding(padding: EdgeInsets.only(left: 6), child: Text('•', style: TextStyle(fontSize: 14))),
-              const Spacer(),
+        // The island header of the graph: the title (a dot while unsaved),
+        // then the node picker and the actions.
+        EditorIslandHeader(
+          title: 'PCG Graph · ${_graph.name}${_dirty ? ' •' : ''}',
+          leading: const Icon(LucideIcons.workflow, size: 14),
+          actions: [
               _AddNodeSelect(onAdd: (type) => _mutate(() {
                     _graph.nodes.add(PcgNode(id: _graph.freshNodeId(type), type: type));
                     _graph.relinkAsChain();
@@ -136,8 +133,7 @@ class _PcgGraphEditorState extends State<PcgGraphEditor> {
                 onPressed: _save,
                 child: const Text('Save'),
               ),
-            ],
-          ),
+          ],
         ),
         if (_status != null)
           Padding(

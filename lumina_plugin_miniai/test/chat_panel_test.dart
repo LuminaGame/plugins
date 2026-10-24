@@ -65,6 +65,9 @@ void main() {
   testWidgets('without a provider: the chat title, a disabled composer that says why, a live tool count', (tester) async {
     await pumpPanel(tester);
     expect(find.text('AI ASSISTANT'), findsNothing, reason: 'the right dock header names the panel');
+    // The chat's title row is the island sub-header: 36 px under the dock's.
+    final title = find.ancestor(of: find.byKey(const ValueKey('miniai_chat_title')), matching: find.byType(Container)).first;
+    expect(tester.getSize(title).height, EditorIslandStyle.headerHeight);
     expect(find.text('New chat'), findsOneWidget);
     expect(tester.widget<PrimaryButton>(find.byKey(const ValueKey('miniai_send'))).onPressed, isNull);
     expect(find.byKey(const ValueKey('miniai_setup_provider')), findsOneWidget);

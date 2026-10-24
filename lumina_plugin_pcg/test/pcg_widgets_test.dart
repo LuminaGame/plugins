@@ -48,6 +48,9 @@ void main() {
         );
     await tester.pumpWidget(app(details()));
     await tester.pump();
+    // The editor's island section labels, from the plugin API.
+    expect(find.byType(EditorIslandSectionLabel), findsNWidgets(2));
+    expect(find.text('PCG VOLUME'), findsOneWidget);
     expect(find.text('0'), findsOneWidget);
     expect(find.text('Generate'), findsOneWidget);
 
@@ -86,6 +89,8 @@ void main() {
     final id = await service.placeVolume(location: [0.0, 0.0, 0.0], graphPath: 'contents/pcg/Barrels.lmas', seed: 8);
     await tester.pumpWidget(app(PcgGraphEditor(asset: loadPcgGraphAssetForEditor(path), level: level, service: service)));
     await tester.pump();
+    // The graph's title row is an island header (36 px, upper case).
+    expect(tester.getSize(find.byType(EditorIslandHeader)).height, EditorIslandStyle.headerHeight);
     for (final t in PcgNodeType.values) {
       expect(find.text(t.label), findsOneWidget, reason: 'every starter node is listed');
     }
